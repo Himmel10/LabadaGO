@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "LabadaGO",
+    "slug": "labadago",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTabletMode": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.himmel10.labadago"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-updates"
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b84c1b00-c61f-4bb4-a378-8680146a8297"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b84c1b00-c61f-4bb4-a378-8680146a8297"
+    }
+  }
+}
