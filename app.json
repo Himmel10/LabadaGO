@@ -1,47 +1,44 @@
 {
   "expo": {
     "name": "LabadaGO",
-    "slug": "labadago",
+    "slug": "labadago-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/images/icon.png",
+    "scheme": "rork-app",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
-      "supportsTabletMode": true
+      "supportsTablet": false,
+      "bundleIdentifier": "app.rork.labadago-app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.himmel10.labadago"
+      "package": "app.rork.labadago_app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [
-        "expo-updates"
-      ]
+        "expo-router",
+        {
+          "origin": "https://rork.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
-    "extra": {
-      "eas": {
-        "projectId": "b84c1b00-c61f-4bb4-a378-8680146a8297"
-      }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/b84c1b00-c61f-4bb4-a378-8680146a8297"
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
