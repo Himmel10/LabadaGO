@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { MapPin, Star, ChevronRight, CheckCircle, FileText, Shirt, Sparkles, Wind, BedDouble, Wrench, ShoppingBag, Clock } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,19 +9,20 @@ import { useShops } from '@/contexts/ShopContext';
 import { Colors } from '@/constants/colors';
 import { LaundryShop, LaundryService, PaymentMethod } from '@/types';
 import { DELIVERY_FEE_BASE } from '@/mocks/data';
+import DateTimePickerModal from '@/components/DateTimePickerModal';
+import LocationPickerModal from '@/components/LocationPickerModal';
+import { GCashIcon, PayMayaIcon, CardIcon, CODIcon } from '@/components/PaymentIcons';
 
 const ICON_MAP: Record<string, any> = {
   shirt: Shirt, sparkles: Sparkles, wind: Wind, 'bed-double': BedDouble,
 };
 
-const PAYMENT_METHODS: { key: PaymentMethod; label: string; emoji: string }[] = [
-  { key: 'gcash', label: 'GCash', emoji: '💚' },
-  { key: 'paymaya', label: 'PayMaya', emoji: '💙' },
-  { key: 'card', label: 'Credit/Debit Card', emoji: '💳' },
-  { key: 'cod', label: 'Cash on Delivery', emoji: '💵' },
+const PAYMENT_METHODS: { key: PaymentMethod; label: string; getIcon: () => React.ReactNode }[] = [
+  { key: 'gcash', label: 'GCash', getIcon: () => <GCashIcon size={28} /> },
+  { key: 'paymaya', label: 'PayMaya', getIcon: () => <PayMayaIcon size={28} /> },
+  { key: 'card', label: 'Credit/Debit Card', getIcon: () => <CardIcon size={28} /> },
+  { key: 'cod', label: 'Cash on Delivery', getIcon: () => <CODIcon size={28} /> },
 ];
-
-const PICKUP_TIMES = ['ASAP', 'Today 2:00 PM', 'Today 4:00 PM', 'Tomorrow 9:00 AM', 'Tomorrow 12:00 PM'];
 
 type Step = 'shop' | 'service' | 'schedule' | 'confirm';
 
@@ -30,6 +31,7 @@ export default function BookLaundryScreen() {
   const { user } = useAuth();
   const { createOrder } = useOrders();
   const { getOpenShops } = useShops();
+  const params = useLocalSearchParams();
 
   const [step, setStep] = useState<Step>('shop');
   const [selectedShop, setSelectedShop] = useState<LaundryShop | null>(null);
@@ -37,12 +39,55 @@ export default function BookLaundryScreen() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
   const [notes, setNotes] = useState<string>('');
   const [pickupAddress, setPickupAddress] = useState<string>(user?.address ?? '');
-  const [pickupSchedule, setPickupSchedule] = useState<string>('ASAP');
+  const [pickupSchedule, setPickupSchedule] = useState<Date | null>(null);
+  const [pickupCoordinates, setPickupCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const openShops = useMemo(() => getOpenShops(), [getOpenShops]);
 
-  const estimatedPrice = selectedService ? `₱${(selectedService.pricePerKg * 3).toFixed(0)} - ₱${(selectedService.pricePerKg * 8).toFixed(0)}` : '';
+  // Jump directly to schedule step if shop and service are pre-selected from shop detail page
+  useEffect(() => {
+    const shopId = params.shopId as string | undefined;
+    const serviceId = params.serviceId as string | undefined;
+
+    if (shopId && serviceId) {
+      const shop = openShops.find(s => s.id === shopId);
+      if (shop) {
+        const service = shop.services?.find(srv => srv.id === serviceId);
+        if (service) {
+          setSelectedShop(shop);
+          setSelectedService(service);
+          setStep('schedule');
+        }
+      }
+    }
+  }, [params.shopId, params.serviceId, openShops]);
+
+  const handleConfirmDateTime = (date: Date) => {
+    setPickupSchedule(date);
+  };
+
+  const handleConfirmLocation = (address: string, coords: { latitude: number; longitude: number }) => {
+    setPickupAddress(address);
+    setPickupCoordinates(coords);
+  };
+
+  const formatPickupDateTime = (date: Date | null) => {
+    if (!date) return 'Select date & time';
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    let dateStr = '';
+    if (date.toDateString() === today.toDateString()) dateStr = 'Today';
+    else if (date.toDateString() === tomorrow.toDateString()) dateStr = 'Tomorrow';
+    else dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${dateStr} at ${timeStr}`;
+  };
 
   const handleSelectShop = (shop: LaundryShop) => {
     setSelectedShop(shop);
@@ -58,7 +103,11 @@ export default function BookLaundryScreen() {
   const handleConfirmBooking = async () => {
     if (!selectedShop || !selectedService || !user) return;
     if (!pickupAddress.trim()) {
-      Alert.alert('Error', 'Please enter your pickup address');
+      Alert.alert('Error', 'Please select your pickup address');
+      return;
+    }
+    if (!pickupSchedule) {
+      Alert.alert('Error', 'Please select pickup date and time');
       return;
     }
 
@@ -79,9 +128,11 @@ export default function BookLaundryScreen() {
         pickupAddress: pickupAddress.trim(),
         deliveryAddress: pickupAddress.trim(),
         pickupDate: new Date().toISOString(),
-        pickupSchedule,
+        pickupLatitude: pickupCoordinates?.latitude,
+        pickupLongitude: pickupCoordinates?.longitude,
+        pickupSchedule: pickupSchedule?.toISOString() || new Date().toISOString(),
         customerConfirmedPrice: false,
-        estimatedAmount: selectedService.pricePerKg * 5,
+        estimatedAmount: DELIVERY_FEE_BASE,
         deliveryFee: DELIVERY_FEE_BASE,
         receiptGenerated: false,
         notes: notes.trim() || undefined,
@@ -214,39 +265,35 @@ export default function BookLaundryScreen() {
             </TouchableOpacity>
 
             <Text style={styles.sectionLabel}>PICKUP ADDRESS</Text>
-            <View style={styles.inputGroup}>
-              <MapPin size={18} color={Colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your pickup address"
-                placeholderTextColor={Colors.textTertiary}
-                value={pickupAddress}
-                onChangeText={setPickupAddress}
-              />
-            </View>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowLocationPicker(true)}
+              activeOpacity={0.7}
+            >
+              <MapPin size={18} color={pickupAddress ? Colors.primary : Colors.textSecondary} />
+              <Text style={[styles.pickerButtonText, !pickupAddress && styles.placeholderText]}>
+                {pickupAddress || 'Tap to select pickup address'}
+              </Text>
+              <ChevronRight size={20} color={Colors.textTertiary} />
+            </TouchableOpacity>
 
-            <Text style={styles.sectionLabel}>PICKUP SCHEDULE</Text>
-            <View style={styles.scheduleList}>
-              {PICKUP_TIMES.map((time) => (
-                <TouchableOpacity
-                  key={time}
-                  style={[styles.scheduleCard, pickupSchedule === time && styles.scheduleCardActive]}
-                  onPress={() => setPickupSchedule(time)}
-                  activeOpacity={0.7}
-                >
-                  <Clock size={16} color={pickupSchedule === time ? Colors.primary : Colors.textTertiary} />
-                  <Text style={[styles.scheduleText, pickupSchedule === time && styles.scheduleTextActive]}>{time}</Text>
-                  {pickupSchedule === time && <CheckCircle size={18} color={Colors.primary} />}
-                </TouchableOpacity>
-              ))}
-            </View>
+            <TouchableOpacity
+              style={styles.pickerButton}
+              onPress={() => setShowDateTimePicker(true)}
+              activeOpacity={0.7}
+            >
+              <Clock size={18} color={pickupSchedule ? Colors.primary : Colors.textSecondary} />
+              <Text style={[styles.pickerButtonText, !pickupSchedule && styles.placeholderText]}>
+                {formatPickupDateTime(pickupSchedule)}
+              </Text>
+              <ChevronRight size={20} color={Colors.textTertiary} />
+            </TouchableOpacity>
 
-            <View style={styles.estimateCard}>
-              <Text style={styles.estimateTitle}>Estimated Price</Text>
-              <Text style={styles.estimateValue}>{estimatedPrice}</Text>
-              <Text style={styles.estimateNote}>+ ₱{DELIVERY_FEE_BASE} delivery fee</Text>
-              <Text style={styles.estimateDisclaimer}>
-                Final price will be determined after actual weighing at the shop. You will confirm before payment.
+            <View style={styles.deliveryFeeCard}>
+              <Text style={styles.deliveryFeeTitle}>Delivery Fee</Text>
+              <Text style={styles.deliveryFeeValue}>₱{DELIVERY_FEE_BASE}</Text>
+              <Text style={styles.deliveryFeeNote}>
+                Final total will be calculated after weighing at the shop. You will confirm the amount before payment.
               </Text>
             </View>
 
@@ -287,18 +334,14 @@ export default function BookLaundryScreen() {
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Schedule</Text>
-                <Text style={styles.summaryValue}>{pickupSchedule}</Text>
+                <Text style={styles.summaryValue}>{formatPickupDateTime(pickupSchedule)}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                <Text style={styles.summaryValue}>₱{DELIVERY_FEE_BASE}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Est. Total</Text>
-                <Text style={[styles.summaryValue, { color: Colors.primary, fontWeight: '800' as const }]}>{estimatedPrice}</Text>
+                <Text style={[styles.summaryValue, { color: Colors.primary, fontWeight: '800' as const }]}>₱{DELIVERY_FEE_BASE}</Text>
               </View>
               <Text style={styles.disclaimer}>
-                This is an estimated price only. The actual price will be calculated after weighing at the shop. You will review and confirm the exact amount before payment.
+                The service cost will be calculated after weighing at the shop. You will review and confirm the exact total (service cost + ₱{DELIVERY_FEE_BASE} delivery fee) before payment.
               </Text>
             </View>
 
@@ -324,7 +367,7 @@ export default function BookLaundryScreen() {
                   onPress={() => setPaymentMethod(pm.key)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.paymentEmoji}>{pm.emoji}</Text>
+                  <View style={styles.paymentIconContainer}>{pm.getIcon()}</View>
                   <Text style={[styles.paymentLabel, paymentMethod === pm.key && styles.paymentLabelActive]}>{pm.label}</Text>
                   {paymentMethod === pm.key && <CheckCircle size={18} color={Colors.primary} />}
                 </TouchableOpacity>
@@ -349,6 +392,21 @@ export default function BookLaundryScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <DateTimePickerModal
+        visible={showDateTimePicker}
+        selectedDate={pickupSchedule}
+        onDateTimeSelected={handleConfirmDateTime}
+        onClose={() => setShowDateTimePicker(false)}
+      />
+
+      <LocationPickerModal
+        visible={showLocationPicker}
+        selectedAddress={pickupAddress}
+        selectedCoords={pickupCoordinates || undefined}
+        onLocationSelected={handleConfirmLocation}
+        onClose={() => setShowLocationPicker(false)}
+      />
     </View>
   );
 }
@@ -405,10 +463,18 @@ const styles = StyleSheet.create({
   servicePriceRow: { flexDirection: 'row', gap: 12, marginTop: 6 },
   servicePrice: { fontSize: 14, fontWeight: '800' as const, color: Colors.primary },
   serviceEta: { fontSize: 12, color: Colors.textTertiary },
-  scheduleSection: {},
+  scheduleSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
   sectionLabel: {
-    fontSize: 12, fontWeight: '600' as const, color: Colors.textTertiary,
-    letterSpacing: 0.5, marginBottom: 8, marginTop: 16,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    marginBottom: 10,
+    marginTop: 16,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
   },
   inputGroup: {
     flexDirection: 'row', alignItems: 'flex-start', backgroundColor: Colors.white,
@@ -416,26 +482,78 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   input: { flex: 1, fontSize: 15, color: Colors.text, minHeight: 20 },
-  scheduleList: { gap: 6 },
-  scheduleCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white,
-    padding: 14, borderRadius: 12, gap: 12, borderWidth: 1.5, borderColor: Colors.border,
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 12,
+    marginBottom: 12,
   },
-  scheduleCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryFaded + '40' },
-  scheduleText: { fontSize: 15, fontWeight: '600' as const, color: Colors.text, flex: 1 },
-  scheduleTextActive: { color: Colors.primaryDark },
-  estimateCard: {
-    backgroundColor: Colors.primaryFaded, borderRadius: 16, padding: 18, marginTop: 16,
-    borderWidth: 1, borderColor: Colors.primary + '20',
+  pickerButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
   },
-  estimateTitle: { fontSize: 13, color: Colors.primaryDark, fontWeight: '600' as const, marginBottom: 4 },
-  estimateValue: { fontSize: 24, fontWeight: '800' as const, color: Colors.primaryDark },
-  estimateNote: { fontSize: 13, color: Colors.primary, marginTop: 4 },
-  estimateDisclaimer: { fontSize: 12, color: Colors.textSecondary, marginTop: 8, lineHeight: 17, fontStyle: 'italic' as const },
-  confirmSection: {},
+  placeholderText: {
+    color: Colors.textTertiary,
+    fontWeight: '500' as const,
+  },
+  scheduleList: { display: 'none' },
+  scheduleCard: { display: 'none' },
+  scheduleCardActive: { display: 'none' },
+  scheduleText: { display: 'none' },
+  scheduleTextActive: { display: 'none' },
+  deliveryFeeCard: {
+    backgroundColor: Colors.primaryFaded,
+    borderRadius: 16,
+    padding: 18,
+    marginTop: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary + '20',
+  },
+  deliveryFeeTitle: {
+    fontSize: 13,
+    color: Colors.primaryDark,
+    fontWeight: '600' as const,
+    marginBottom: 6,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  deliveryFeeValue: {
+    fontSize: 28,
+    fontWeight: '800' as const,
+    color: Colors.primaryDark,
+    marginBottom: 8,
+  },
+  deliveryFeeNote: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+    fontStyle: 'italic' as const,
+  },
+  estimateCard: { display: 'none' },
+  estimateTitle: { display: 'none' },
+  estimateValue: { display: 'none' },
+  estimateNote: { display: 'none' },
+  estimateDisclaimer: { display: 'none' },
+  confirmSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
   summaryCard: {
-    backgroundColor: Colors.white, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.borderLight, marginBottom: 4,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    marginBottom: 16,
   },
   summaryTitle: { fontSize: 16, fontWeight: '700' as const, color: Colors.text, marginBottom: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
@@ -448,23 +566,53 @@ const styles = StyleSheet.create({
     padding: 14, borderRadius: 14, gap: 12, borderWidth: 1.5, borderColor: Colors.border,
   },
   paymentCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryFaded + '40' },
-  paymentEmoji: { fontSize: 20 },
+  paymentIconContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   paymentLabel: { fontSize: 15, fontWeight: '600' as const, color: Colors.text, flex: 1 },
   paymentLabelActive: { color: Colors.primaryDark },
-  btnRow: { flexDirection: 'row', gap: 10 },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
   backStepBtn: {
-    flex: 1, height: 56, borderRadius: 16, borderWidth: 1.5, borderColor: Colors.border,
-    justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.white,
+    flex: 1,
+    height: 56,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
   },
-  backStepText: { fontSize: 16, fontWeight: '600' as const, color: Colors.textSecondary },
+  backStepText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+  },
   nextBtn: {
-    flex: 2, backgroundColor: Colors.primary, height: 56, borderRadius: 16,
-    justifyContent: 'center', alignItems: 'center',
+    flex: 1,
+    backgroundColor: Colors.primary,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  nextBtnText: { fontSize: 17, fontWeight: '700' as const, color: Colors.white },
+  nextBtnText: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: Colors.white,
+  },
   confirmBtn: {
-    flex: 2, backgroundColor: Colors.primary, height: 56, borderRadius: 16,
-    justifyContent: 'center', alignItems: 'center',
+    flex: 1,
+    backgroundColor: Colors.primary,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  confirmBtnText: { fontSize: 17, fontWeight: '700' as const, color: Colors.white },
+  confirmBtnText: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: Colors.white,
+  },
 });

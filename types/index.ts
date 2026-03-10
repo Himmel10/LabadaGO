@@ -29,7 +29,7 @@ export interface User {
 
 export interface Review {
   id: string;
-  orderId: string;
+  orderId?: string;
   customerId: string;
   customerName: string;
   customerAvatar?: string;
@@ -118,6 +118,8 @@ export interface Order {
   pickupAddress: string;
   deliveryAddress: string;
   pickupDate: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
   pickupSchedule?: string;
   deliveryDate?: string;
   weightPhoto?: string;

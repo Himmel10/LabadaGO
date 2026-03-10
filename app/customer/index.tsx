@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Status
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Search, MapPin, Star, Clock, ChevronRight, MessageCircle, Bell, ShoppingBag, Package, CheckCircle2, Zap, Heart, ArrowRight, Gift, AlertCircle, Wind, Square } from 'lucide-react-native';
+import { Search, MapPin, Star, Clock, ChevronRight, MessageCircle, Bell, ShoppingBag, Package, CheckCircle2, Zap, Heart, ArrowRight, Gift, AlertCircle, Wind, Square, Droplets, Flame, Cloud } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { useShops } from '@/contexts/ShopContext';
@@ -31,19 +31,23 @@ export default function CustomerHomeScreen() {
   
   const mainActiveOrder = activeOrders.length > 0 ? activeOrders[0] : null;
   
+  // Separate nearby shops and popular shops
+  const nearbyShops = filteredShops.slice(0, 3);
+  const popularShops = [...filteredShops].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3);
+  
   // Service shortcuts
   const services = [
-    { id: 1, name: 'Wash & Fold', icon: 'package' },
-    { id: 2, name: 'Dry Only', icon: 'wind' },
-    { id: 3, name: 'Comforter', icon: 'square' },
+    { id: 1, name: 'Wash & Fold', icon: 'droplets' },
+    { id: 2, name: 'Dry Only', icon: 'flame' },
+    { id: 3, name: 'Comforter', icon: 'cloud' },
     { id: 4, name: 'Express', icon: 'zap' },
   ];
 
   const getServiceIcon = (iconName: string) => {
     switch (iconName) {
-      case 'package': return <Package size={24} color={Colors.primary} />;
-      case 'wind': return <Wind size={24} color={Colors.primary} />;
-      case 'square': return <Square size={24} color={Colors.primary} />;
+      case 'droplets': return <Droplets size={24} color={Colors.primary} />;
+      case 'flame': return <Flame size={24} color={Colors.primary} />;
+      case 'cloud': return <Cloud size={24} color={Colors.primary} />;
       case 'zap': return <Zap size={24} color={Colors.primary} />;
       default: return <Package size={24} color={Colors.primary} />;
     }
@@ -173,21 +177,7 @@ export default function CustomerHomeScreen() {
         )}
 
         {/* Book Laundry Button - Enhanced */}
-        <TouchableOpacity
-          style={styles.bookBanner}
-          onPress={() => router.push('/book-laundry' as any)}
-          activeOpacity={0.85}
-          testID="book-laundry-btn"
-        >
-          <View style={styles.bookContent}>
-            <ShoppingBag size={28} color={Colors.white} />
-            <View style={styles.bookTextWrap}>
-              <Text style={styles.bookTitle}>Book Laundry</Text>
-              <Text style={styles.bookSubtitle}>Pick a shop, choose a service, and schedule pickup.</Text>
-            </View>
-          </View>
-          <ChevronRight size={22} color="rgba(255,255,255,0.7)" />
-        </TouchableOpacity>
+        {/* Removed - now showing nearby and popular shops */}
 
         {/* Service Shortcuts */}
         <View style={styles.servicesSection}>
@@ -250,22 +240,9 @@ export default function CustomerHomeScreen() {
           </View>
         </View>
 
-        {/* Notification Preview */}
-        {/* This would pull from real notifications */}
-        <View style={styles.notificationPreview}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Bell size={16} color={Colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.notifPreviewTitle}>Rider Assigned</Text>
-              <Text style={styles.notifPreviewTime}>10 mins ago</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Nearby Shops Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Nearby Shops</Text>
-          <Text style={styles.shopCount}>{filteredShops.length} found</Text>
         </View>
 
         {filteredShops.length === 0 && (
@@ -276,7 +253,7 @@ export default function CustomerHomeScreen() {
         )}
 
         <View style={styles.shopList}>
-          {filteredShops.map((shop) => (
+          {nearbyShops.map((shop) => (
             <TouchableOpacity
               key={shop.id}
               style={styles.shopCard}
@@ -317,17 +294,77 @@ export default function CustomerHomeScreen() {
           ))}
         </View>
 
-        {/* Order History Shortcut */}
-        {completedOrders.length > 0 && (
+        {filteredShops.length > 3 && (
           <TouchableOpacity 
-            style={styles.orderHistoryLink}
+            style={styles.viewAllBtn}
             onPress={() => router.push('/customer/orders' as any)}
             activeOpacity={0.7}
           >
-            <ShoppingBag size={16} color={Colors.primary} />
-            <Text style={styles.orderHistoryText}>View Order History</Text>
+            <Text style={styles.viewAllText}>View All Shops</Text>
             <ChevronRight size={16} color={Colors.primary} />
           </TouchableOpacity>
+        )}
+
+        {/* Popular Shops Section */}
+        {popularShops.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Popular Shops</Text>
+            </View>
+
+            <View style={styles.shopList}>
+              {popularShops.map((shop) => (
+                <TouchableOpacity
+                  key={shop.id}
+                  style={styles.shopCard}
+                  onPress={() => router.push(`/shop-detail?id=${shop.id}` as any)}
+                  activeOpacity={0.8}
+                  testID={`popular-shop-${shop.id}`}
+                >
+                  <Image source={{ uri: shop.image }} style={styles.shopImage} contentFit="cover" />
+                  <View style={styles.shopInfo}>
+                    <View style={styles.shopNameRow}>
+                      <Text style={styles.shopName} numberOfLines={1}>{shop.name}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: shop.isOpen ? Colors.successLight : Colors.errorLight }]}>
+                        <Text style={[styles.statusText, { color: shop.isOpen ? Colors.success : Colors.error }]}>
+                          {shop.isOpen ? 'Open' : 'Closed'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.shopMeta}>
+                      <MapPin size={13} color={Colors.textTertiary} />
+                      <Text style={styles.shopAddress} numberOfLines={1}>{shop.address}</Text>
+                    </View>
+                    <View style={styles.shopBottom}>
+                      <View style={styles.ratingRow}>
+                        <Star size={14} color={Colors.accent} fill={Colors.accent} />
+                        <Text style={styles.ratingText}>{shop.rating > 0 ? shop.rating : 'New'}</Text>
+                        {shop.reviewCount > 0 && <Text style={styles.reviewCount}>({shop.reviewCount})</Text>}
+                      </View>
+                      <View style={styles.distanceRow}>
+                        <Clock size={13} color={Colors.textTertiary} />
+                        <Text style={styles.distanceText}>{shop.services.length} services</Text>
+                      </View>
+                      <TouchableOpacity style={styles.favoriteBtn} activeOpacity={0.7}>
+                        <Heart size={16} color={Colors.textTertiary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {filteredShops.length > 3 && (
+              <TouchableOpacity 
+                style={styles.viewAllBtn}
+                onPress={() => router.push('/customer/orders' as any)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.viewAllText}>View All Popular Shops</Text>
+                <ChevronRight size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
+          </>
         )}
 
         <View style={{ height: 20 }} />
@@ -412,6 +449,14 @@ const styles = StyleSheet.create({
   bookTitle: { fontSize: 18, fontWeight: '800' as const, color: Colors.white },
   bookSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
 
+  // View All Button
+  viewAllBtn: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, 
+    marginHorizontal: 20, marginTop: 12, marginBottom: 20, 
+    backgroundColor: Colors.primaryFaded, borderRadius: 12, padding: 12 
+  },
+  viewAllText: { fontSize: 14, fontWeight: '700' as const, color: Colors.primary },
+
   // Service Shortcuts
   servicesSection: { paddingHorizontal: 20, marginTop: 20 },
   servicesGrid: { flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
@@ -431,11 +476,6 @@ const styles = StyleSheet.create({
   promoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: Colors.borderLight, gap: 10 },
   promoTitle: { fontSize: 13, fontWeight: '700' as const, color: Colors.text },
   promoSubtitle: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-
-  // Notification Preview
-  notificationPreview: { marginHorizontal: 20, marginTop: 12, backgroundColor: Colors.primaryFaded, borderRadius: 12, padding: 12 },
-  notifPreviewTitle: { fontSize: 13, fontWeight: '700' as const, color: Colors.text },
-  notifPreviewTime: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
 
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

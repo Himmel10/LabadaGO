@@ -21,14 +21,20 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState<string>('');
   const [address, setAddress] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
 
   const [shopName, setShopName] = useState<string>('');
   const [shopAddress, setShopAddress] = useState<string>('');
   const [shopDescription, setShopDescription] = useState<string>('');
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !phone.trim() || !password.trim()) {
+    if (!name.trim() || !email.trim() || !phone.trim() || !password.trim() || !confirmPassword.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
@@ -139,6 +145,7 @@ export default function RegisterScreen() {
             )}
 
             <InputField icon={Lock} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+            <InputField icon={Lock} placeholder="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
           </View>
 
           <TouchableOpacity

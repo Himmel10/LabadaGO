@@ -336,6 +336,7 @@ export default function RiderWalletScreen() {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
     </View>
   );
 }

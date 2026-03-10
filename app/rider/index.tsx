@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bike, ArrowRight, Package, Clock, CircleCheck, ToggleLeft, ToggleRight, TrendingUp, Target, Percent } from 'lucide-react-native';
+import { Bike, ArrowRight, Package, Clock, CircleCheck, ToggleLeft, ToggleRight, TrendingUp, Target, Percent, Map } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { Colors } from '@/constants/colors';
@@ -138,6 +138,19 @@ export default function RiderTasksScreen() {
           </View>
         </View>
 
+        {/* Live Tracking Button */}
+        {tasks.length > 0 && (
+          <TouchableOpacity
+            style={styles.trackingBtn}
+            onPress={() => router.push('/rider/tracking' as any)}
+            activeOpacity={0.85}
+          >
+            <Map size={20} color={Colors.white} />
+            <Text style={styles.trackingBtnText}>View Live Tracking</Text>
+            <ArrowRight size={16} color={Colors.white} />
+          </TouchableOpacity>
+        )}
+
         {/* Earnings Section */}
         <Text style={styles.sectionTitle}>Earnings</Text>
         <View style={styles.earningsGrid}>
@@ -269,6 +282,19 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 20, fontWeight: '800' as const, color: Colors.text },
   statLabel: { fontSize: 11, color: Colors.textTertiary, fontWeight: '500' as const },
+  trackingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: Colors.accent,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  trackingBtnText: { fontSize: 16, fontWeight: '700' as const, color: Colors.white },
   sectionTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.text, paddingHorizontal: 20, marginTop: 24, marginBottom: 12 },
   earningsGrid: {
     flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16,

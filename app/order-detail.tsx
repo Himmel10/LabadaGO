@@ -9,12 +9,14 @@ import { useShops } from '@/contexts/ShopContext';
 import { Colors } from '@/constants/colors';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_FLOW, PAYMENT_METHOD_LABELS } from '@/mocks/data';
 import { PaymentMethod } from '@/types';
+import TrackingMap from '@/components/TrackingMap';
+import { GCashIcon, PayMayaIcon, CardIcon, CODIcon } from '@/components/PaymentIcons';
 
-const PAYMENT_METHODS: { key: PaymentMethod; label: string; emoji: string }[] = [
-  { key: 'gcash', label: 'GCash', emoji: '💚' },
-  { key: 'paymaya', label: 'PayMaya', emoji: '💙' },
-  { key: 'card', label: 'Credit/Debit Card', emoji: '💳' },
-  { key: 'cod', label: 'Cash on Delivery', emoji: '💵' },
+const PAYMENT_METHODS: { key: PaymentMethod; label: string; getIcon: () => React.ReactNode }[] = [
+  { key: 'gcash', label: 'GCash', getIcon: () => <GCashIcon size={28} /> },
+  { key: 'paymaya', label: 'PayMaya', getIcon: () => <PayMayaIcon size={28} /> },
+  { key: 'card', label: 'Credit/Debit Card', getIcon: () => <CardIcon size={28} /> },
+  { key: 'cod', label: 'Cash on Delivery', getIcon: () => <CODIcon size={28} /> },
 ];
 
 export default function OrderDetailScreen() {
@@ -132,6 +134,21 @@ export default function OrderDetailScreen() {
           <Text style={styles.statusValue}>{ORDER_STATUS_LABELS[order.status] ?? order.status}</Text>
         </View>
 
+        {['out_for_delivery', 'picked_up', 'in_transit_to_shop', 'ready_for_delivery'].includes(order.status) && order.riderName && (
+          <View style={styles.mapSection}>
+            <Text style={styles.sectionTitle}>Live Tracking</Text>
+            <TrackingMap
+              riderLocation={
+                order.riderName ? { latitude: 12.8797 + Math.random() * 0.01, longitude: 121.7740 + Math.random() * 0.01 } : undefined
+              }
+              customerLocation={order.pickupAddress ? { latitude: 12.8797, longitude: 121.7740 } : undefined}
+              shopLocation={order.shopName ? { latitude: 12.8897, longitude: 121.7840 } : undefined}
+              height={350}
+              showUserLocation={true}
+            />
+          </View>
+        )}
+
         {showTimeline && (
           <View style={styles.trackingSection}>
             <Text style={styles.sectionTitle}>Order Timeline</Text>
@@ -227,7 +244,7 @@ export default function OrderDetailScreen() {
                 style={[styles.paymentOption, selectedPayment === pm.key && styles.paymentOptionActive]}
                 onPress={() => setSelectedPayment(pm.key)}
               >
-                <Text style={styles.paymentEmoji}>{pm.emoji}</Text>
+                <View style={styles.paymentIconContainer}>{pm.getIcon()}</View>
                 <Text style={[styles.paymentLabel, selectedPayment === pm.key && { color: Colors.primaryDark }]}>{pm.label}</Text>
                 {selectedPayment === pm.key && <CheckCircle size={16} color={Colors.primary} />}
               </TouchableOpacity>
@@ -324,17 +341,39 @@ export default function OrderDetailScreen() {
           <View style={styles.reviewForm}>
             <Text style={styles.reviewFormTitle}>Rate your experience</Text>
 
-            <Text style={styles.reviewSubtitle}>Laundry Shop</Text>
-            <View style={styles.starsInput}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <TouchableOpacity key={s} onPress={() => setShopRating(s)} activeOpacity={0.7}>
-                  <Star size={36} color={Colors.accent} fill={s <= shopRating ? Colors.accent : 'transparent'} />
-                </TouchableOpacity>
-              ))}
+            <View style={styles.ratingSection}>
+              <View style={styles.ratingHeader}>
+                <Text style={styles.reviewSubtitle}>Laundry Shop</Text>
+                {shopRating > 0 && (
+                  <Text style={styles.ratingLabel}>
+                    {shopRating === 5 ? '⭐ Excellent!' : shopRating === 4 ? '👍 Good' : shopRating === 3 ? '👌 Fair' : '😞 Poor'}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.starsInput}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <TouchableOpacity 
+                    key={s} 
+                    onPress={() => setShopRating(s)} 
+                    activeOpacity={0.6}
+                    style={[
+                      styles.starButton,
+                      s <= shopRating && styles.starButtonSelected,
+                    ]}
+                  >
+                    <Star 
+                      size={40} 
+                      color={s <= shopRating ? Colors.accent : Colors.borderLight} 
+                      fill={s <= shopRating ? Colors.accent : 'transparent'} 
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
+
             <TextInput
               style={styles.reviewInput}
-              placeholder="Review the shop (optional)"
+              placeholder="Share your feedback about the shop (optional)"
               placeholderTextColor={Colors.textTertiary}
               value={shopReviewText}
               onChangeText={setShopReviewText}
@@ -343,28 +382,51 @@ export default function OrderDetailScreen() {
             />
 
             {order.riderName && (
-              <>
-                <Text style={styles.reviewSubtitle}>Rider Service</Text>
+              <View style={styles.ratingSection}>
+                <View style={styles.ratingHeader}>
+                  <Text style={styles.reviewSubtitle}>Rider Service</Text>
+                  {riderRating > 0 && (
+                    <Text style={styles.ratingLabel}>
+                      {riderRating === 5 ? '⭐ Excellent!' : riderRating === 4 ? '👍 Good' : riderRating === 3 ? '👌 Fair' : '😞 Poor'}
+                    </Text>
+                  )}
+                </View>
                 <View style={styles.starsInput}>
                   {[1, 2, 3, 4, 5].map((s) => (
-                    <TouchableOpacity key={`r${s}`} onPress={() => setRiderRating(s)} activeOpacity={0.7}>
-                      <Star size={36} color={Colors.rider} fill={s <= riderRating ? Colors.rider : 'transparent'} />
+                    <TouchableOpacity 
+                      key={`r${s}`} 
+                      onPress={() => setRiderRating(s)} 
+                      activeOpacity={0.6}
+                      style={[
+                        styles.starButton,
+                        s <= riderRating && styles.starButtonSelected,
+                      ]}
+                    >
+                      <Star 
+                        size={40} 
+                        color={s <= riderRating ? Colors.rider : Colors.borderLight} 
+                        fill={s <= riderRating ? Colors.rider : 'transparent'} 
+                      />
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TextInput
-                  style={styles.reviewInput}
-                  placeholder="Review the rider (optional)"
-                  placeholderTextColor={Colors.textTertiary}
-                  value={riderReviewText}
-                  onChangeText={setRiderReviewText}
-                  multiline
-                  numberOfLines={3}
-                />
-              </>
+              </View>
+            )}
+
+            {order.riderName && (
+              <TextInput
+                style={styles.reviewInput}
+                placeholder="Share your feedback about the rider (optional)"
+                placeholderTextColor={Colors.textTertiary}
+                value={riderReviewText}
+                onChangeText={setRiderReviewText}
+                multiline
+                numberOfLines={3}
+              />
             )}
 
             <TouchableOpacity style={styles.submitReviewBtn} onPress={handleSubmitReview} activeOpacity={0.85}>
+              <Star size={20} color={Colors.white} />
               <Text style={styles.submitReviewText}>Submit Review</Text>
             </TouchableOpacity>
           </View>
@@ -425,6 +487,7 @@ const styles = StyleSheet.create({
   },
   statusLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500' as const, marginBottom: 4 },
   statusValue: { fontSize: 20, fontWeight: '800' as const, color: Colors.white },
+  mapSection: { marginBottom: 20 },
   trackingSection: { marginBottom: 20 },
   sectionTitle: { fontSize: 16, fontWeight: '700' as const, color: Colors.text, marginBottom: 14 },
   timeline: { paddingLeft: 4 },
@@ -475,7 +538,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background, marginBottom: 6, borderWidth: 1, borderColor: Colors.border, width: '100%',
   },
   paymentOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryFaded + '40' },
-  paymentEmoji: { fontSize: 18 },
+  paymentIconContainer: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   paymentLabel: { fontSize: 14, fontWeight: '600' as const, color: Colors.text, flex: 1 },
   payBtn: { backgroundColor: Colors.primary, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, marginTop: 8, width: '100%', alignItems: 'center' },
   payBtnText: { fontSize: 16, fontWeight: '700' as const, color: Colors.white },
@@ -525,14 +588,19 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight,
   },
   reviewFormTitle: { fontSize: 16, fontWeight: '700' as const, color: Colors.text, textAlign: 'center' as const, marginBottom: 16 },
-  reviewSubtitle: { fontSize: 14, fontWeight: '600' as const, color: Colors.textSecondary, marginBottom: 8, textAlign: 'center' as const },
-  starsInput: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 12 },
+  ratingSection: { marginBottom: 20, gap: 10 },
+  ratingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  reviewSubtitle: { fontSize: 14, fontWeight: '600' as const, color: Colors.textSecondary, textAlign: 'center' as const },
+  ratingLabel: { fontSize: 12, fontWeight: '600' as const, color: Colors.primary, backgroundColor: Colors.primaryFaded, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  starsInput: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  starButton: { padding: 4 },
+  starButtonSelected: { transform: [{ scale: 1.1 }] },
   reviewInput: {
     borderWidth: 1, borderColor: Colors.border, borderRadius: 12, padding: 14,
     fontSize: 15, color: Colors.text, minHeight: 70, textAlignVertical: 'top' as const,
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  submitReviewBtn: { backgroundColor: Colors.accent, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  submitReviewBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, paddingVertical: 14, borderRadius: 12 },
   submitReviewText: { fontSize: 16, fontWeight: '700' as const, color: Colors.white },
   ratingCard: {
     backgroundColor: Colors.white, borderRadius: 16, padding: 16, marginBottom: 16, alignItems: 'center',
