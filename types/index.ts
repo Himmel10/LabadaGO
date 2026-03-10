@@ -70,7 +70,7 @@ export interface LaundryService {
   description: string;
   pricePerKg: number;
   estimatedHours: number;
-  icon: string;
+  icon?: string;
   photo?: string;
 }
 

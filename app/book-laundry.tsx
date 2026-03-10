@@ -250,7 +250,7 @@ export default function BookLaundryScreen() {
               <>
                 <Text style={styles.sectionSubtitle}>Available services at {selectedShop.name}</Text>
                 {selectedShop.services.map((service) => {
-                  const Icon = ICON_MAP[service.icon] ?? Wrench;
+                  const Icon = ICON_MAP[service.icon ?? ''] ?? Wrench;
                   return (
                     <TouchableOpacity
                       key={service.id}
@@ -258,9 +258,17 @@ export default function BookLaundryScreen() {
                       onPress={() => handleSelectService(service)}
                       activeOpacity={0.8}
                     >
-                      <View style={styles.serviceIconWrap}>
-                        <Icon size={22} color={Colors.primary} />
-                      </View>
+                      {service.photo ? (
+                        <Image
+                          source={{ uri: service.photo }}
+                          style={styles.serviceImage}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <View style={styles.serviceIconWrap}>
+                          <Icon size={22} color={Colors.primary} />
+                        </View>
+                      )}
                       <View style={styles.serviceInfo}>
                         <Text style={styles.serviceName}>{service.name}</Text>
                         <Text style={styles.serviceDesc}>{service.description}</Text>
@@ -501,6 +509,7 @@ const styles = StyleSheet.create({
     width: 48, height: 48, borderRadius: 14, backgroundColor: Colors.primaryFaded,
     justifyContent: 'center', alignItems: 'center',
   },
+  serviceImage: { width: 48, height: 48, borderRadius: 14 },
   serviceInfo: { flex: 1 },
   serviceName: { fontSize: 15, fontWeight: '700' as const, color: Colors.text },
   serviceDesc: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
