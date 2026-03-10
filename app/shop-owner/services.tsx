@@ -3,21 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Wrench, Plus, Shirt, Sparkles, Wind, Zap, Flame, BedDouble, Trash2, X, Camera, ImageIcon } from 'lucide-react-native';
+import { Wrench, Plus, Trash2, X, Camera, ImageIcon } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShops } from '@/contexts/ShopContext';
 import { Colors } from '@/constants/colors';
 
-const ICON_MAP: Record<string, any> = {
-  shirt: Shirt,
-  sparkles: Sparkles,
-  wind: Wind,
-  zap: Zap,
-  flame: Flame,
-  'bed-double': BedDouble,
-};
 
-const ICON_OPTIONS = ['shirt', 'sparkles', 'wind', 'bed-double', 'zap', 'flame'];
 
 export default function ShopServicesScreen() {
   const { user } = useAuth();
@@ -29,7 +20,6 @@ export default function ShopServicesScreen() {
   const [newDesc, setNewDesc] = useState<string>('');
   const [newPrice, setNewPrice] = useState<string>('');
   const [newHours, setNewHours] = useState<string>('24');
-  const [newIcon, setNewIcon] = useState<string>('shirt');
   const [newPhoto, setNewPhoto] = useState<string>('');
 
   const handleDelete = (serviceId: string) => {
@@ -88,7 +78,6 @@ export default function ShopServicesScreen() {
       description: newDesc.trim() || newName.trim(),
       pricePerKg: price,
       estimatedHours: parseInt(newHours) || 24,
-      icon: newIcon,
       photo: newPhoto || undefined,
     });
 
@@ -97,7 +86,6 @@ export default function ShopServicesScreen() {
     setNewDesc('');
     setNewPrice('');
     setNewHours('24');
-    setNewIcon('shirt');
     setNewPhoto('');
     Alert.alert('Success', 'Service added successfully');
   };
@@ -118,7 +106,6 @@ export default function ShopServicesScreen() {
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {services.map((service) => {
-          const Icon = ICON_MAP[service.icon] ?? Wrench;
           return (
             <View key={service.id} style={styles.serviceCard}>
               {service.photo ? (
@@ -140,9 +127,6 @@ export default function ShopServicesScreen() {
               )}
               <View style={styles.serviceBody}>
                 <View style={styles.serviceTop}>
-                  <View style={styles.serviceIconWrap}>
-                    <Icon size={22} color={Colors.primary} />
-                  </View>
                   <View style={styles.serviceInfo}>
                     <Text style={styles.serviceName}>{service.name}</Text>
                     <Text style={styles.serviceDesc}>{service.description}</Text>
@@ -240,22 +224,6 @@ export default function ShopServicesScreen() {
                 keyboardType="number-pad"
               />
 
-              <Text style={styles.fieldLabel}>Icon</Text>
-              <View style={styles.iconGrid}>
-                {ICON_OPTIONS.map((iconKey) => {
-                  const IconComp = ICON_MAP[iconKey] ?? Wrench;
-                  return (
-                    <TouchableOpacity
-                      key={iconKey}
-                      style={[styles.iconOption, newIcon === iconKey && styles.iconOptionActive]}
-                      onPress={() => setNewIcon(iconKey)}
-                    >
-                      <IconComp size={22} color={newIcon === iconKey ? Colors.primary : Colors.textTertiary} />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
               <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleAddService} activeOpacity={0.85}>
                 <Text style={styles.modalSubmitText}>Add Service</Text>
               </TouchableOpacity>
@@ -291,10 +259,6 @@ const styles = StyleSheet.create({
   addPhotoText: { fontSize: 13, color: Colors.textTertiary, fontWeight: '500' as const },
   serviceBody: { padding: 16 },
   serviceTop: { flexDirection: 'row', gap: 14, marginBottom: 12 },
-  serviceIconWrap: {
-    width: 48, height: 48, borderRadius: 14, backgroundColor: Colors.primaryFaded,
-    justifyContent: 'center', alignItems: 'center',
-  },
   serviceInfo: { flex: 1 },
   serviceName: { fontSize: 16, fontWeight: '700' as const, color: Colors.text, marginBottom: 2 },
   serviceDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
@@ -328,12 +292,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.primary + '30', borderStyle: 'dashed' as const, flexDirection: 'row', gap: 8,
   },
   pickPhotoText: { fontSize: 14, color: Colors.primary, fontWeight: '600' as const },
-  iconGrid: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 4 },
-  iconOption: {
-    width: 48, height: 48, borderRadius: 14, backgroundColor: Colors.background,
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: Colors.border,
-  },
-  iconOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryFaded },
   modalSubmitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 20, marginBottom: 20 },
   modalSubmitText: { fontSize: 16, fontWeight: '700' as const, color: Colors.white },
 });

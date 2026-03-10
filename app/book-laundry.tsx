@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
-import { MapPin, Star, ChevronRight, CheckCircle, FileText, Shirt, Sparkles, Wind, BedDouble, Wrench, ShoppingBag, Clock } from 'lucide-react-native';
+import { MapPin, Star, ChevronRight, FileText, Shirt, Sparkles, Wind, BedDouble, Wrench, ShoppingBag, Clock } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { useShops } from '@/contexts/ShopContext';
@@ -11,17 +11,15 @@ import { LaundryShop, LaundryService, PaymentMethod } from '@/types';
 import { DELIVERY_FEE_BASE } from '@/mocks/data';
 import DateTimePickerModal from '@/components/DateTimePickerModal';
 import LocationPickerModal from '@/components/LocationPickerModal';
-import { GCashIcon, PayMayaIcon, CardIcon, CODIcon } from '@/components/PaymentIcons';
-
 const ICON_MAP: Record<string, any> = {
   shirt: Shirt, sparkles: Sparkles, wind: Wind, 'bed-double': BedDouble,
 };
 
-const PAYMENT_METHODS: { key: PaymentMethod; label: string; getIcon: () => React.ReactNode }[] = [
-  { key: 'gcash', label: 'GCash', getIcon: () => <GCashIcon size={28} /> },
-  { key: 'paymaya', label: 'PayMaya', getIcon: () => <PayMayaIcon size={28} /> },
-  { key: 'card', label: 'Credit/Debit Card', getIcon: () => <CardIcon size={28} /> },
-  { key: 'cod', label: 'Cash on Delivery', getIcon: () => <CODIcon size={28} /> },
+const PAYMENT_METHODS: { key: PaymentMethod; label: string }[] = [
+  { key: 'gcash', label: 'GCash' },
+  { key: 'paymaya', label: 'PayMaya' },
+  { key: 'card', label: 'Credit/Debit Card' },
+  { key: 'cod', label: 'Cash on Delivery' },
 ];
 
 type Step = 'shop' | 'service' | 'schedule' | 'confirm';
@@ -36,9 +34,16 @@ export default function BookLaundryScreen() {
   const [step, setStep] = useState<Step>('shop');
   const [selectedShop, setSelectedShop] = useState<LaundryShop | null>(null);
   const [selectedService, setSelectedService] = useState<LaundryService | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(user?.preferredPaymentMethod ?? 'gcash');
   const [notes, setNotes] = useState<string>('');
   const [pickupAddress, setPickupAddress] = useState<string>(user?.address ?? '');
+  const [pickupStreet, setPickupStreet] = useState<string>('');
+  const [pickupBarangay, setPickupBarangay] = useState<string>('');
+  const [pickupMunicipality, setPickupMunicipality] = useState<string>('');
+  const [pickupProvince, setPickupProvince] = useState<string>('');
+  const [pickupLandmark, setPickupLandmark] = useState<string>('');
+  const [pickupContactPerson, setPickupContactPerson] = useState<string>('');
+  const [pickupContactNumber, setPickupContactNumber] = useState<string>('');
   const [pickupSchedule, setPickupSchedule] = useState<Date | null>(null);
   const [pickupCoordinates, setPickupCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -69,9 +74,26 @@ export default function BookLaundryScreen() {
     setPickupSchedule(date);
   };
 
-  const handleConfirmLocation = (address: string, coords: { latitude: number; longitude: number }) => {
-    setPickupAddress(address);
-    setPickupCoordinates(coords);
+  const handleConfirmLocation = (data: {
+    address: string;
+    street: string;
+    barangay: string;
+    municipality: string;
+    province: string;
+    landmark: string;
+    contactPerson: string;
+    contactNumber: string;
+    coords: { latitude: number; longitude: number };
+  }) => {
+    setPickupAddress(data.address);
+    setPickupStreet(data.street);
+    setPickupBarangay(data.barangay);
+    setPickupMunicipality(data.municipality);
+    setPickupProvince(data.province);
+    setPickupLandmark(data.landmark);
+    setPickupContactPerson(data.contactPerson);
+    setPickupContactNumber(data.contactNumber);
+    setPickupCoordinates(data.coords);
   };
 
   const formatPickupDateTime = (date: Date | null) => {
@@ -332,6 +354,24 @@ export default function BookLaundryScreen() {
                 <Text style={styles.summaryLabel}>Pickup</Text>
                 <Text style={styles.summaryValue} numberOfLines={2}>{pickupAddress || 'N/A'}</Text>
               </View>
+              {pickupContactPerson && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Contact Person</Text>
+                  <Text style={styles.summaryValue}>{pickupContactPerson}</Text>
+                </View>
+              )}
+              {pickupContactNumber && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Contact Number</Text>
+                  <Text style={styles.summaryValue}>{pickupContactNumber}</Text>
+                </View>
+              )}
+              {pickupLandmark && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Landmark</Text>
+                  <Text style={styles.summaryValue}>{pickupLandmark}</Text>
+                </View>
+              )}
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Schedule</Text>
                 <Text style={styles.summaryValue}>{formatPickupDateTime(pickupSchedule)}</Text>
@@ -367,9 +407,10 @@ export default function BookLaundryScreen() {
                   onPress={() => setPaymentMethod(pm.key)}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.paymentIconContainer}>{pm.getIcon()}</View>
+                  <View style={styles.radioButton}>
+                    {paymentMethod === pm.key && <View style={styles.radioButtonInner} />}
+                  </View>
                   <Text style={[styles.paymentLabel, paymentMethod === pm.key && styles.paymentLabelActive]}>{pm.label}</Text>
-                  {paymentMethod === pm.key && <CheckCircle size={18} color={Colors.primary} />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -404,6 +445,9 @@ export default function BookLaundryScreen() {
         visible={showLocationPicker}
         selectedAddress={pickupAddress}
         selectedCoords={pickupCoordinates || undefined}
+        selectedLandmark={pickupLandmark}
+        selectedContactPerson={pickupContactPerson}
+        selectedContactNumber={pickupContactNumber}
         onLocationSelected={handleConfirmLocation}
         onClose={() => setShowLocationPicker(false)}
       />
@@ -567,6 +611,21 @@ const styles = StyleSheet.create({
   },
   paymentCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryFaded + '40' },
   paymentIconContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.primary,
+  },
   paymentLabel: { fontSize: 15, fontWeight: '600' as const, color: Colors.text, flex: 1 },
   paymentLabelActive: { color: Colors.primaryDark },
   btnRow: {

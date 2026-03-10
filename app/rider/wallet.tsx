@@ -164,7 +164,7 @@ export default function RiderWalletScreen() {
 
           <View style={styles.statBox}>
             <View style={[styles.statIcon, { backgroundColor: Colors.primaryFaded }]}>
-              <DollarSign size={20} color={Colors.primary} />
+              <Text style={{ fontSize: 20, fontWeight: '700', color: Colors.primary }}>₱</Text>
             </View>
             <Text style={styles.statLabel}>Total Earnings</Text>
             <Text style={styles.statValue}>₱{totalEarnings}</Text>
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary, marginHorizontal: 20, marginTop: 16, paddingVertical: 16,
     borderRadius: 16,
   },
-  withdrawBtnText: { fontSize: 16, fontWeight: '700' as const, color: Colors.white, flex: 1, textAlign: 'center' as const },
+  withdrawBtnText: { fontSize: 16, fontWeight: '700' as const, color: Colors.white },
   modalOverlay: { flex: 1, backgroundColor: Colors.white },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
   modalTitle: { fontSize: 20, fontWeight: '700' as const, color: Colors.text },

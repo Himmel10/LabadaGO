@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { User, Phone, Mail, Star, ChevronRight, Settings, CircleHelp, Car, MapPin } from 'lucide-react-native';
+import { User, Phone, Mail, Star, ChevronRight, Settings, CircleHelp, Car, MapPin, Camera } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { ImageUploadModal } from '@/components/ImageUploadModal';
+import { uploadProfileImage } from '@/lib/imageUpload';
 
 const VEHICLE_LABELS: Record<string, string> = {
   motorcycle: 'Motorcycle',
@@ -14,14 +16,37 @@ const VEHICLE_LABELS: Record<string, string> = {
 };
 
 export default function RiderProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const router = useRouter();
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: async () => { await logout(); router.replace('/'); } },
     ]);
+  };
+
+  const handleImageSelected = async (imageUri: string) => {
+    if (!user) return;
+    
+    try {
+      setIsUploadingImage(true);
+      const result = await uploadProfileImage(imageUri, user.id, user.role);
+      
+      if (result.success && result.imageUrl) {
+        await updateUser({ avatar: result.imageUrl });
+        Alert.alert('Success', 'Profile picture updated successfully');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.log('Error:', error);
+      Alert.alert('Error', 'Failed to upload profile picture');
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   return (
@@ -31,14 +56,29 @@ export default function RiderProfileScreen() {
       </SafeAreaView>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
-          {user?.avatar ? (
-            <Image source={{ uri: user.avatar }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}><User size={32} color={Colors.textTertiary} /></View>
-          )}
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={() => setShowImageUpload(true)}
+            activeOpacity={0.8}
+          >
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}><User size={32} color={Colors.textTertiary} /></View>
+            )}
+            <View style={styles.cameraIcon}>
+              <Camera size={16} color={Colors.white} />
+            </View>
+          </TouchableOpacity>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{user?.name}</Text>
             <Text style={styles.profileRole}>Rider</Text>
+            <TouchableOpacity
+              onPress={() => setShowImageUpload(true)}
+              style={styles.changePhotoBtn}
+            >
+              <Text style={styles.changePhotoBtnText}>Change Photo</Text>
+            </TouchableOpacity>
             <View style={styles.ratingRow}>
               <Star size={14} color={Colors.accent} fill={Colors.accent} />
               <Text style={styles.ratingText}>{user?.rating ?? 4.8}</Text>
@@ -57,25 +97,31 @@ export default function RiderProfileScreen() {
           )}
         </View>
 
-        {[
-          { icon: Settings, label: 'Settings', color: Colors.primary },
-          { icon: CircleHelp, label: 'Help & Support', color: Colors.info },
-        ].map((item, i) => {
-          const Icon = item.icon;
-          return (
-            <TouchableOpacity key={i} style={styles.menuItem} activeOpacity={0.7}>
-              <View style={[styles.menuIcon, { backgroundColor: item.color + '15' }]}><Icon size={20} color={item.color} /></View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <ChevronRight size={18} color={Colors.textTertiary} />
-            </TouchableOpacity>
-          );
-        })}
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/rider/settings')} activeOpacity={0.7}>
+          <View style={[styles.menuIcon, { backgroundColor: Colors.primary + '15' }]}><Settings size={20} color={Colors.primary} /></View>
+          <Text style={styles.menuLabel}>Settings</Text>
+          <ChevronRight size={18} color={Colors.textTertiary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/rider/help')} activeOpacity={0.7}>
+          <View style={[styles.menuIcon, { backgroundColor: Colors.info + '15' }]}><CircleHelp size={20} color={Colors.info} /></View>
+          <Text style={styles.menuLabel}>Help & Support</Text>
+          <ChevronRight size={18} color={Colors.textTertiary} />
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <ImageUploadModal
+        visible={showImageUpload}
+        onClose={() => setShowImageUpload(false)}
+        onImageSelected={handleImageSelected}
+        isLoading={isUploadingImage}
+        title="Change Profile Picture"
+      />
     </View>
   );
 }
@@ -89,11 +135,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white,
     marginTop: 16, padding: 20, borderRadius: 20, gap: 16, borderWidth: 1, borderColor: Colors.borderLight,
   },
+  avatarContainer: { position: 'relative' as const },
   avatar: { width: 64, height: 64, borderRadius: 22 },
   avatarPlaceholder: { width: 64, height: 64, borderRadius: 22, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
+  cameraIcon: {
+    position: 'absolute' as const,
+    bottom: -2,
+    right: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.white,
+  },
   profileInfo: { flex: 1 },
   profileName: { fontSize: 20, fontWeight: '800' as const, color: Colors.text },
   profileRole: { fontSize: 14, color: Colors.primary, fontWeight: '600' as const, marginTop: 2 },
+  changePhotoBtn: { marginTop: 4 },
+  changePhotoBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '600' as const },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   ratingText: { fontSize: 14, fontWeight: '700' as const, color: Colors.text },
   infoSection: {

@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -15,14 +14,22 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.labadago-app"
+      "bundleIdentifier": "app.rork.labadago-app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyBsURQnQqovhFg5LzPToZ6IVI8XNl3JmgQ"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.labadago_app"
+      "package": "app.rork.labadago_app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBsURQnQqovhFg5LzPToZ6IVI8XNl3JmgQ"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

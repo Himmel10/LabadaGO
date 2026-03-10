@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { MessageCircle, Send, ArrowLeft, Store, Truck, Search } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages } from '@/contexts/MessageContext';
@@ -14,6 +15,7 @@ export default function CustomerMessagesScreen() {
   const { getConversationsForUser, getConversationMessages, sendMessage, markConversationRead, getOrCreateConversation } = useMessages();
   const { orders } = useOrders();
   const { shops } = useShops();
+  const router = useRouter();
 
   const [selectedConvo, setSelectedConvo] = useState<Conversation | null>(null);
   const [messageText, setMessageText] = useState<string>('');
@@ -103,7 +105,7 @@ export default function CustomerMessagesScreen() {
       <View style={styles.container}>
         <SafeAreaView edges={['top']} style={styles.chatHeaderWrap}>
           <View style={styles.chatHeader}>
-            <TouchableOpacity onPress={() => setSelectedConvo(null)} style={styles.backBtn} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => setSelectedConvo(null)} style={styles.chatBackBtn} activeOpacity={0.7}>
               <ArrowLeft size={22} color={Colors.text} />
             </TouchableOpacity>
             <View style={styles.chatHeaderInfo}>
@@ -230,6 +232,9 @@ export default function CustomerMessagesScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerWrap}>
         <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color={Colors.text} />
+          </TouchableOpacity>
           <Text style={styles.title}>Messages</Text>
           <TouchableOpacity style={styles.newChatBtn} onPress={() => setShowNewChat(true)} activeOpacity={0.7}>
             <MessageCircle size={16} color={Colors.white} />
@@ -294,8 +299,9 @@ export default function CustomerMessagesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   headerWrap: { backgroundColor: Colors.white, paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8 },
-  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, gap: 12 },
+  backBtn: { padding: 6, backgroundColor: Colors.background, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, flex: 1 },
   newChatBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: Colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
@@ -344,7 +350,7 @@ const styles = StyleSheet.create({
   contactRole: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   chatHeaderWrap: { backgroundColor: Colors.white, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
   chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 8 },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
+  chatBackBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
   chatHeaderInfo: { flex: 1 },
   chatHeaderName: { fontSize: 17, fontWeight: '700' as const, color: Colors.text },
   roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },

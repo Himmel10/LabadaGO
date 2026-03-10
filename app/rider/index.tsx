@@ -1,18 +1,18 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bike, ArrowRight, Package, Clock, CircleCheck, ToggleLeft, ToggleRight, TrendingUp, Target, Percent, Map } from 'lucide-react-native';
+import { Bike, ArrowRight, Package, Clock, CircleCheck, TrendingUp, Target, Percent, Map, MessageCircle, Bell } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
+import { useMessages } from '@/contexts/MessageContext';
 import { Colors } from '@/constants/colors';
 
 export default function RiderTasksScreen() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { getTasksForRider, orders } = useOrders();
+  const { getTotalUnread } = useMessages();
   const router = useRouter();
-
-  const [isAvailable, setIsAvailable] = useState<boolean>(user?.isAvailable !== false);
 
   const tasks = useMemo(() => {
     if (!user) return [];
@@ -77,37 +77,40 @@ export default function RiderTasksScreen() {
   const newRequests = tasks.length;
 
   const firstName = user?.name?.split(' ')[0] ?? 'Rider';
+  const unreadCount = getTotalUnread(user?.id ?? '');
 
-  const toggleAvailability = () => {
-    const newStatus = !isAvailable;
-    setIsAvailable(newStatus);
-    updateUser({ isAvailable: newStatus });
-    Alert.alert(
-      newStatus ? 'You are now Available' : 'You are now Offline',
-      newStatus ? 'You will receive new delivery tasks.' : 'You will not receive new tasks while offline.'
-    );
-  };
+
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
       <SafeAreaView edges={['top']} style={styles.headerWrap}>
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Hey, {firstName}!</Text>
             <Text style={styles.subtitle}>{tasks.length} active task{tasks.length !== 1 ? 's' : ''}</Text>
           </View>
-          <TouchableOpacity style={styles.toggleBtn} onPress={toggleAvailability} activeOpacity={0.7}>
-            <View style={[styles.statusBadge, { backgroundColor: isAvailable ? Colors.successLight : Colors.errorLight }]}>
-              {isAvailable ? (
-                <ToggleRight size={18} color={Colors.success} />
-              ) : (
-                <ToggleLeft size={18} color={Colors.error} />
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.msgBtn}
+              onPress={() => router.push('/rider/messages' as any)}
+              activeOpacity={0.7}
+            >
+              <MessageCircle size={22} color={Colors.text} />
+              {unreadCount > 0 && (
+                <View style={styles.msgBadge}>
+                  <Text style={styles.msgBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
               )}
-              <Text style={[styles.onlineText, { color: isAvailable ? Colors.success : Colors.error }]}>
-                {isAvailable ? 'Available' : 'Offline'}
-              </Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.msgBtn}
+              onPress={() => router.push('/rider/notifications' as any)}
+              activeOpacity={0.7}
+            >
+              <Bell size={22} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -248,7 +251,7 @@ export default function RiderTasksScreen() {
             <Bike size={48} color={Colors.textTertiary} />
             <Text style={styles.emptyTitle}>No active tasks</Text>
             <Text style={styles.emptyText}>
-              {isAvailable ? 'New delivery tasks will appear here' : 'Go online to receive tasks'}
+              {user?.isAvailable !== false ? 'New delivery tasks will appear here' : 'Go online to receive tasks'}
             </Text>
           </View>
         )}
@@ -265,9 +268,21 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8 },
   greeting: { fontSize: 22, fontWeight: '800' as const, color: Colors.text },
   subtitle: { fontSize: 14, color: Colors.textSecondary, marginTop: 2 },
-  toggleBtn: {},
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
-  onlineText: { fontSize: 13, fontWeight: '600' as const },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  msgBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
+  msgBadge: {
+    position: 'absolute' as const,
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  msgBadgeText: { fontSize: 10, fontWeight: '700' as const, color: Colors.white },
   scroll: { flex: 1 },
   shopAssignment: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

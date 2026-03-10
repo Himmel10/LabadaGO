@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Status
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Search, MapPin, Star, Clock, ChevronRight, MessageCircle, Bell, ShoppingBag, Package, CheckCircle2, Zap, Heart, ArrowRight, Gift, AlertCircle, Wind, Square, Droplets, Flame, Cloud } from 'lucide-react-native';
+import { Search, MapPin, Star, Clock, ChevronRight, MessageCircle, Bell, ShoppingBag, Package, CheckCircle2, Heart, ArrowRight, Gift, AlertCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { useShops } from '@/contexts/ShopContext';
@@ -34,24 +34,6 @@ export default function CustomerHomeScreen() {
   // Separate nearby shops and popular shops
   const nearbyShops = filteredShops.slice(0, 3);
   const popularShops = [...filteredShops].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3);
-  
-  // Service shortcuts
-  const services = [
-    { id: 1, name: 'Wash & Fold', icon: 'droplets' },
-    { id: 2, name: 'Dry Only', icon: 'flame' },
-    { id: 3, name: 'Comforter', icon: 'cloud' },
-    { id: 4, name: 'Express', icon: 'zap' },
-  ];
-
-  const getServiceIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'droplets': return <Droplets size={24} color={Colors.primary} />;
-      case 'flame': return <Flame size={24} color={Colors.primary} />;
-      case 'cloud': return <Cloud size={24} color={Colors.primary} />;
-      case 'zap': return <Zap size={24} color={Colors.primary} />;
-      default: return <Package size={24} color={Colors.primary} />;
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -179,26 +161,6 @@ export default function CustomerHomeScreen() {
         {/* Book Laundry Button - Enhanced */}
         {/* Removed - now showing nearby and popular shops */}
 
-        {/* Service Shortcuts */}
-        <View style={styles.servicesSection}>
-          <Text style={styles.sectionTitle}>Quick Services</Text>
-          <View style={styles.servicesGrid}>
-            {services.map((service) => (
-              <TouchableOpacity
-                key={service.id}
-                style={styles.serviceCard}
-                onPress={() => router.push('/book-laundry' as any)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.serviceIconContainer}>
-                  {getServiceIcon(service.icon)}
-                </View>
-                <Text style={styles.serviceName}>{service.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* Quick Summary Cards */}
         <View style={styles.summarySection}>
           <View style={styles.summaryGrid}>
@@ -252,47 +214,38 @@ export default function CustomerHomeScreen() {
           </View>
         )}
 
-        <View style={styles.shopList}>
-          {nearbyShops.map((shop) => (
-            <TouchableOpacity
-              key={shop.id}
-              style={styles.shopCard}
-              onPress={() => router.push(`/shop-detail?id=${shop.id}` as any)}
-              activeOpacity={0.8}
-              testID={`shop-${shop.id}`}
-            >
-              <Image source={{ uri: shop.image }} style={styles.shopImage} contentFit="cover" />
-              <View style={styles.shopInfo}>
-                <View style={styles.shopNameRow}>
-                  <Text style={styles.shopName} numberOfLines={1}>{shop.name}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: shop.isOpen ? Colors.successLight : Colors.errorLight }]}>
-                    <Text style={[styles.statusText, { color: shop.isOpen ? Colors.success : Colors.error }]}>
+        {filteredShops.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.carouselContainer}
+            scrollEventThrottle={16}
+          >
+            {nearbyShops.map((shop) => (
+              <TouchableOpacity
+                key={shop.id}
+                style={styles.carouselCard}
+                onPress={() => router.push(`/shop-detail?id=${shop.id}` as any)}
+                activeOpacity={0.8}
+                testID={`shop-${shop.id}`}
+              >
+                <Image source={{ uri: shop.image }} style={styles.carouselImage} contentFit="cover" />
+                <View style={styles.carouselInfo}>
+                  <Text style={styles.carouselShopName} numberOfLines={1}>{shop.name}</Text>
+                  <View style={styles.carouselMeta}>
+                    <Star size={12} color={Colors.accent} fill={Colors.accent} />
+                    <Text style={styles.carouselRating}>{shop.rating > 0 ? shop.rating : 'New'}</Text>
+                  </View>
+                  <View style={[styles.carouselStatusBadge, { backgroundColor: shop.isOpen ? Colors.successLight : Colors.errorLight }]}>
+                    <Text style={[styles.carouselStatusText, { color: shop.isOpen ? Colors.success : Colors.error }]}>
                       {shop.isOpen ? 'Open' : 'Closed'}
                     </Text>
                   </View>
                 </View>
-                <View style={styles.shopMeta}>
-                  <MapPin size={13} color={Colors.textTertiary} />
-                  <Text style={styles.shopAddress} numberOfLines={1}>{shop.address}</Text>
-                </View>
-                <View style={styles.shopBottom}>
-                  <View style={styles.ratingRow}>
-                    <Star size={14} color={Colors.accent} fill={Colors.accent} />
-                    <Text style={styles.ratingText}>{shop.rating > 0 ? shop.rating : 'New'}</Text>
-                    {shop.reviewCount > 0 && <Text style={styles.reviewCount}>({shop.reviewCount})</Text>}
-                  </View>
-                  <View style={styles.distanceRow}>
-                    <Clock size={13} color={Colors.textTertiary} />
-                    <Text style={styles.distanceText}>{shop.services.length} services</Text>
-                  </View>
-                  <TouchableOpacity style={styles.favoriteBtn} activeOpacity={0.7}>
-                    <Heart size={16} color={Colors.textTertiary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {filteredShops.length > 3 && (
           <TouchableOpacity 
@@ -312,47 +265,36 @@ export default function CustomerHomeScreen() {
               <Text style={styles.sectionTitle}>Popular Shops</Text>
             </View>
 
-            <View style={styles.shopList}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.carouselContainer}
+              scrollEventThrottle={16}
+            >
               {popularShops.map((shop) => (
                 <TouchableOpacity
                   key={shop.id}
-                  style={styles.shopCard}
+                  style={styles.carouselCard}
                   onPress={() => router.push(`/shop-detail?id=${shop.id}` as any)}
                   activeOpacity={0.8}
                   testID={`popular-shop-${shop.id}`}
                 >
-                  <Image source={{ uri: shop.image }} style={styles.shopImage} contentFit="cover" />
-                  <View style={styles.shopInfo}>
-                    <View style={styles.shopNameRow}>
-                      <Text style={styles.shopName} numberOfLines={1}>{shop.name}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: shop.isOpen ? Colors.successLight : Colors.errorLight }]}>
-                        <Text style={[styles.statusText, { color: shop.isOpen ? Colors.success : Colors.error }]}>
-                          {shop.isOpen ? 'Open' : 'Closed'}
-                        </Text>
-                      </View>
+                  <Image source={{ uri: shop.image }} style={styles.carouselImage} contentFit="cover" />
+                  <View style={styles.carouselInfo}>
+                    <Text style={styles.carouselShopName} numberOfLines={1}>{shop.name}</Text>
+                    <View style={styles.carouselMeta}>
+                      <Star size={12} color={Colors.accent} fill={Colors.accent} />
+                      <Text style={styles.carouselRating}>{shop.rating > 0 ? shop.rating : 'New'}</Text>
                     </View>
-                    <View style={styles.shopMeta}>
-                      <MapPin size={13} color={Colors.textTertiary} />
-                      <Text style={styles.shopAddress} numberOfLines={1}>{shop.address}</Text>
-                    </View>
-                    <View style={styles.shopBottom}>
-                      <View style={styles.ratingRow}>
-                        <Star size={14} color={Colors.accent} fill={Colors.accent} />
-                        <Text style={styles.ratingText}>{shop.rating > 0 ? shop.rating : 'New'}</Text>
-                        {shop.reviewCount > 0 && <Text style={styles.reviewCount}>({shop.reviewCount})</Text>}
-                      </View>
-                      <View style={styles.distanceRow}>
-                        <Clock size={13} color={Colors.textTertiary} />
-                        <Text style={styles.distanceText}>{shop.services.length} services</Text>
-                      </View>
-                      <TouchableOpacity style={styles.favoriteBtn} activeOpacity={0.7}>
-                        <Heart size={16} color={Colors.textTertiary} />
-                      </TouchableOpacity>
+                    <View style={[styles.carouselStatusBadge, { backgroundColor: shop.isOpen ? Colors.successLight : Colors.errorLight }]}>
+                      <Text style={[styles.carouselStatusText, { color: shop.isOpen ? Colors.success : Colors.error }]}>
+                        {shop.isOpen ? 'Open' : 'Closed'}
+                      </Text>
                     </View>
                   </View>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {filteredShops.length > 3 && (
               <TouchableOpacity 
@@ -457,13 +399,6 @@ const styles = StyleSheet.create({
   },
   viewAllText: { fontSize: 14, fontWeight: '700' as const, color: Colors.primary },
 
-  // Service Shortcuts
-  servicesSection: { paddingHorizontal: 20, marginTop: 20 },
-  servicesGrid: { flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  serviceCard: { flex: 1, backgroundColor: Colors.white, borderRadius: 14, padding: 12, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: Colors.borderLight },
-  serviceIconContainer: { justifyContent: 'center', alignItems: 'center', height: 40 },
-  serviceName: { fontSize: 11, fontWeight: '700' as const, color: Colors.text, textAlign: 'center' as const },
-
   // Summary Cards
   summarySection: { paddingHorizontal: 20, marginTop: 18 },
   summaryGrid: { flexDirection: 'row', gap: 10 },
@@ -510,4 +445,19 @@ const styles = StyleSheet.create({
   // Order History Link
   orderHistoryLink: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginTop: 20, backgroundColor: Colors.white, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.borderLight },
   orderHistoryText: { flex: 1, fontSize: 14, fontWeight: '700' as const, color: Colors.text },
+
+  // Carousel Styles
+  carouselContainer: { paddingHorizontal: 20, marginBottom: 12 },
+  carouselCard: {
+    width: 160, backgroundColor: Colors.white, borderRadius: 14, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.borderLight, marginRight: 12, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
+  },
+  carouselImage: { width: '100%', height: 120 },
+  carouselInfo: { padding: 12, gap: 8 },
+  carouselShopName: { fontSize: 14, fontWeight: '700' as const, color: Colors.text },
+  carouselMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  carouselRating: { fontSize: 12, fontWeight: '700' as const, color: Colors.text },
+  carouselStatusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
+  carouselStatusText: { fontSize: 10, fontWeight: '600' as const },
 });

@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
 import { Store, MapPin, Phone, Mail, ChevronRight, Star, Camera, Edit3, X, Clock, MessageCircle, Settings, HelpCircle, Shield } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShops } from '@/contexts/ShopContext';
 import { Colors } from '@/constants/colors';
+import { ImageUploadModal } from '@/components/ImageUploadModal';
+import { uploadShopLogo } from '@/lib/imageUpload';
 
 export default function ShopProfileScreen() {
   const { user, logout } = useAuth();
@@ -17,6 +18,8 @@ export default function ShopProfileScreen() {
   const reviews = shop ? getReviewsByShop(shop.id) : [];
 
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editName, setEditName] = useState<string>('');
   const [editAddress, setEditAddress] = useState<string>('');
   const [editPhone, setEditPhone] = useState<string>('');
@@ -63,23 +66,25 @@ export default function ShopProfileScreen() {
     Alert.alert('Success', 'Shop info updated successfully');
   };
 
-  const handleChangeShopLogo = async () => {
+  const handleChangeShopLogo = async (imageUri: string) => {
     if (!shop) return;
+    
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        await updateShop(shop.id, { image: result.assets[0].uri });
-        Alert.alert('Success', 'Shop logo updated');
+      setIsUploadingImage(true);
+      const result = await uploadShopLogo(imageUri, shop.id);
+      
+      if (result.success && result.imageUrl) {
+        await updateShop(shop.id, { image: result.imageUrl });
+        Alert.alert('Success', 'Shop logo updated successfully');
+        setShowImageUpload(false);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to upload image');
       }
-    } catch (e) {
-      console.log('Image picker error:', e);
-      Alert.alert('Error', 'Failed to pick image');
+    } catch (error) {
+      console.log('Error:', error);
+      Alert.alert('Error', 'Failed to upload shop logo');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -98,7 +103,7 @@ export default function ShopProfileScreen() {
       </SafeAreaView>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
-          <TouchableOpacity onPress={handleChangeShopLogo} activeOpacity={0.8} style={styles.avatarContainer}>
+          <TouchableOpacity onPress={() => setShowImageUpload(true)} activeOpacity={0.8} style={styles.avatarContainer}>
             {shop?.image ? (
               <Image source={{ uri: shop.image }} style={styles.avatar} />
             ) : (
@@ -169,7 +174,7 @@ export default function ShopProfileScreen() {
           <ChevronRight size={18} color={Colors.textTertiary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={handleChangeShopLogo}>
+        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={() => setShowImageUpload(true)}>
           <View style={[styles.menuIcon, { backgroundColor: Colors.primary + '15' }]}><Camera size={20} color={Colors.primary} /></View>
           <Text style={styles.menuLabel}>Change Shop Logo</Text>
           <ChevronRight size={18} color={Colors.textTertiary} />
@@ -295,6 +300,14 @@ export default function ShopProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <ImageUploadModal
+        visible={showImageUpload}
+        onClose={() => setShowImageUpload(false)}
+        onImageSelected={handleChangeShopLogo}
+        isLoading={isUploadingImage}
+        title="Change Shop Logo"
+      />
     </View>
   );
 }

@@ -1,4 +1,5 @@
 export type UserRole = 'customer' | 'shop_owner' | 'rider' | 'admin';
+export type PaymentMethod = 'gcash' | 'paymaya' | 'card' | 'cod';
 
 export interface User {
   id: string;
@@ -24,6 +25,7 @@ export interface User {
   driverLicense?: string;
   validId?: string;
   isSuspended?: boolean;
+  preferredPaymentMethod?: PaymentMethod;
   createdAt: string;
 }
 
@@ -92,7 +94,6 @@ export type OrderStatus =
   | 'cancelled'
   | 'declined';
 
-export type PaymentMethod = 'gcash' | 'paymaya' | 'card' | 'cod';
 export type PaymentStatus = 'pending' | 'awaiting' | 'paid' | 'released';
 
 export interface Order {
@@ -117,6 +118,13 @@ export interface Order {
   isPaid: boolean;
   pickupAddress: string;
   deliveryAddress: string;
+  pickupStreet?: string;
+  pickupBarangay?: string;
+  pickupMunicipality?: string;
+  pickupProvince?: string;
+  pickupLandmark?: string;
+  pickupContactPerson?: string;
+  pickupContactNumber?: string;
   pickupDate: string;
   pickupLatitude?: number;
   pickupLongitude?: number;

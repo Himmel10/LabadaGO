@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Package, Tag, Info, Star, Truck, Store, CreditCard, CheckCircle2 } from 'lucide-react-native';
+import { Bell, Package, Tag, Info, Star, Truck, Store, CreditCard, CheckCircle2, ArrowLeft } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
@@ -60,7 +60,12 @@ export default function NotificationsScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerWrap}>
-        <Text style={styles.title}>Notifications</Text>
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Notifications</Text>
+        </View>
       </SafeAreaView>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {notifications.map((notif) => {
@@ -102,7 +107,9 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   headerWrap: { backgroundColor: Colors.white, paddingBottom: 12 },
-  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, paddingHorizontal: 20, paddingTop: 8 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, gap: 12 },
+  backBtn: { padding: 6, backgroundColor: Colors.background, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, flex: 1 },
   scroll: { flex: 1, paddingHorizontal: 20, paddingTop: 12 },
   notifCard: {
     flexDirection: 'row', alignItems: 'flex-start', backgroundColor: Colors.white,
