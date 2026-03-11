@@ -143,7 +143,7 @@ export default function ShopDetailScreen() {
           <Text style={styles.sectionTitle}>Services & Pricing</Text>
 
           {shop.services.length > 0 ? shop.services.map((service) => {
-            const Icon = ICON_MAP[service.icon] ?? Wrench;
+            const Icon = ICON_MAP[service.icon ?? ''] ?? Wrench;
             return (
               <TouchableOpacity
                 key={service.id}
