@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { MessageCircle, Send, ArrowLeft, Store, User, Search } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages } from '@/contexts/MessageContext';
@@ -10,6 +11,7 @@ import { Colors } from '@/constants/colors';
 import { Conversation } from '@/types';
 
 export default function RiderMessagesScreen() {
+  const router = useRouter();
   const { user, allUsers } = useAuth();
   const { getConversationsForUser, getConversationMessages, sendMessage, markConversationRead, getOrCreateConversation } = useMessages();
   const { orders } = useOrders();
@@ -121,8 +123,13 @@ export default function RiderMessagesScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView edges={['top']} style={styles.header}>
-        <Text style={styles.title}>Messages</Text>
+      <SafeAreaView edges={['top']} style={styles.headerWrap}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Messages</Text>
+        </View>
       </SafeAreaView>
 
       <View style={styles.searchContainer}>
@@ -206,8 +213,11 @@ export default function RiderMessagesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  headerWrap: { backgroundColor: Colors.white, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, gap: 12 },
+  backBtn: { padding: 4 },
+  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, flex: 1 },
   header: { backgroundColor: Colors.white, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
-  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, paddingHorizontal: 20, paddingTop: 8 },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, marginHorizontal: 20, marginTop: 12, marginBottom: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: Colors.borderLight, gap: 8 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text },
   scroll: { flex: 1, paddingHorizontal: 20 },

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { MessageCircle, Send, ArrowLeft, User, Truck, Search } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages } from '@/contexts/MessageContext';
@@ -10,6 +11,7 @@ import { Colors } from '@/constants/colors';
 import { Conversation } from '@/types';
 
 export default function ShopMessagesScreen() {
+  const router = useRouter();
   const { user, allUsers } = useAuth();
   const { getConversationsForUser, getConversationMessages, sendMessage, markConversationRead, getOrCreateConversation } = useMessages();
   const { orders } = useOrders();
@@ -232,6 +234,9 @@ export default function ShopMessagesScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerWrap}>
         <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color={Colors.text} />
+          </TouchableOpacity>
           <Text style={styles.title}>Messages</Text>
           <TouchableOpacity style={styles.newChatBtn} onPress={() => setShowNewChat(true)} activeOpacity={0.7}>
             <MessageCircle size={16} color={Colors.white} />
@@ -296,8 +301,9 @@ export default function ShopMessagesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   headerWrap: { backgroundColor: Colors.white, paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8 },
-  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, gap: 12 },
+  backBtn: { padding: 4 },
+  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, flex: 1 },
   newChatBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: Colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,

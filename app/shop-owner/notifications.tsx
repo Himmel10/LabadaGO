@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Bell, AlertCircle, CheckCircle, MessageCircle } from 'lucide-react-native';
+import { ArrowLeft, Bell, AlertCircle, CheckCircle, MessageCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { Colors } from '@/constants/colors';
@@ -80,8 +80,8 @@ export default function ShopOwnerNotificationsScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerWrap}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <ChevronLeft size={24} color={Colors.text} />
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color={Colors.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.pageTitle}>Notifications</Text>
@@ -148,6 +148,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     gap: 12,
   },
+  backBtn: { padding: 4 },
   pageTitle: { fontSize: 22, fontWeight: '800' as const, color: Colors.text },
   unreadBadge: {
     fontSize: 12,

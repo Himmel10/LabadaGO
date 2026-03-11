@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Package, Tag, Info, Truck, Store, CreditCard, CheckCircle2, MapPin, AlertCircle } from 'lucide-react-native';
+import { Bell, Package, Tag, Info, Truck, Store, CreditCard, CheckCircle2, MapPin, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
@@ -56,8 +56,12 @@ export default function RiderNotificationsScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerWrap}>
-        <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color={Colors.text} />
+          </TouchableOpacity>
           <Text style={styles.title}>Notifications</Text>
+          <View style={{ flex: 1 }} />
           {unreadNotifications.length > 0 && (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadBadgeText}>{unreadNotifications.length > 9 ? '9+' : unreadNotifications.length}</Text>
@@ -139,8 +143,10 @@ export default function RiderNotificationsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   headerWrap: { backgroundColor: Colors.white, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, gap: 12 },
+  backBtn: { padding: 4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
-  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, paddingTop: 8 },
+  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, paddingTop: 8, flex: 1 },
   unreadBadge: { backgroundColor: Colors.primary, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   unreadBadgeText: { fontSize: 12, fontWeight: '700' as const, color: Colors.white },
   scroll: { flex: 1, paddingHorizontal: 20 },
