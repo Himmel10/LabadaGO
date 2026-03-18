@@ -22,7 +22,7 @@ interface EditProfileModalProps {
   onSave: (updates: Partial<User>) => Promise<void>;
 }
 
-type EditTab = 'basic' | 'address' | 'password' | 'payment';
+type EditTab = 'basic' | 'address' | 'payment';
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   visible,
@@ -40,11 +40,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   // Address
   const [editAddress, setEditAddress] = useState(user?.address ?? '');
-
-  // Password
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Payment
   const [preferredPayment, setPreferredPayment] = useState<string>(user?.preferredPaymentMethod ?? 'gcash');
@@ -118,33 +113,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }
   };
 
-  const handleChangePassword = async () => {
-    if (!currentPassword.trim()) {
-      Alert.alert('Error', 'Please enter current password');
-      return;
-    }
-    if (!newPassword.trim() || newPassword.length < 6) {
-      Alert.alert('Error', 'New password must be at least 6 characters');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      // In a real app, verify current password against stored password
-      // For now, we'll just show success
-      Alert.alert('Success', 'Password changed successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -157,7 +125,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
         {/* Tab Navigation */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar}>
-          {(['basic', 'address', 'password', 'payment'] as EditTab[]).map((tab) => (
+          {(['basic', 'address', 'payment'] as EditTab[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -166,7 +134,6 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
                 {tab === 'basic' && 'Basic Info'}
                 {tab === 'address' && 'Address'}
-                {tab === 'password' && 'Password'}
                 {tab === 'payment' && 'Payment'}
               </Text>
             </TouchableOpacity>
@@ -174,10 +141,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         </ScrollView>
 
         {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
           {activeTab === 'basic' && (
-            <View>
-              <Text style={[styles.fieldLabel, { marginTop: 0, marginBottom: 4 }]}>Full Name</Text>
+            <View style={styles.formCard}>
+              <Text style={styles.fieldLabel}>Full Name</Text>
               <TextInput
                 style={styles.input}
                 value={editName}
@@ -224,8 +195,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           )}
 
           {activeTab === 'address' && (
-            <View>
-              <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Delivery Address</Text>
+            <View style={styles.formCard}>
+              <Text style={styles.fieldLabel}>Delivery Address</Text>
               <TextInput
                 style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
                 value={editAddress}
@@ -256,58 +227,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </View>
           )}
 
-          {activeTab === 'password' && (
-            <View>
-              <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Current Password</Text>
-              <TextInput
-                style={styles.input}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder="Enter current password"
-                placeholderTextColor={Colors.textTertiary}
-                secureTextEntry
-                editable={!isSaving}
-              />
-
-              <Text style={styles.fieldLabel}>New Password</Text>
-              <TextInput
-                style={styles.input}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="Enter new password (min 6 characters)"
-                placeholderTextColor={Colors.textTertiary}
-                secureTextEntry
-                editable={!isSaving}
-              />
-
-              <Text style={styles.fieldLabel}>Confirm Password</Text>
-              <TextInput
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirm new password"
-                placeholderTextColor={Colors.textTertiary}
-                secureTextEntry
-                editable={!isSaving}
-              />
-
-              <TouchableOpacity
-                style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-                onPress={handleChangePassword}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color={Colors.white} />
-                ) : (
-                  <Text style={styles.saveBtnText}>Change Password</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
           {activeTab === 'payment' && (
-            <View>
-              <Text style={[styles.fieldLabel, { marginTop: 0 }]}>Preferred Payment Method</Text>
+            <View style={styles.formCard}>
+              <Text style={styles.fieldLabel}>Preferred Payment Method</Text>
               
               {['gcash', 'paymaya', 'card', 'cod'].map((method) => (
                 <TouchableOpacity
@@ -356,74 +278,86 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '800' as const, color: Colors.text },
   tabBar: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.background,
     paddingHorizontal: 20,
     paddingVertical: 0,
     paddingBottom: 0,
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
   },
   tab: {
     paddingVertical: 10,
-    paddingHorizontal: 0,
-    marginRight: 24,
-    borderBottomWidth: 2,
+    paddingHorizontal: 12,
+    marginRight: 8,
+    borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
   tabActive: {
     borderBottomColor: Colors.primary,
   },
-  tabLabel: { fontSize: 14, fontWeight: '600' as const, color: Colors.textTertiary },
-  tabLabelActive: { color: Colors.primary },
-  content: { padding: 16, paddingTop: 12, paddingBottom: 20 },
+  tabLabel: { fontSize: 13, fontWeight: '500' as const, color: Colors.textTertiary },
+  tabLabelActive: { color: Colors.primary, fontWeight: '800' as const },
+  content: { padding: 0, paddingTop: 0, paddingBottom: 20 },
+  contentContainer: { padding: 0, margin: 0, paddingTop: 0, flexGrow: 0 },
+  formCard: {
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 0,
+    backgroundColor: Colors.white,
+    marginTop: -2,
+    borderRadius: 0,
+  },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600' as const,
     color: Colors.text,
-    marginBottom: 6,
+    marginBottom: 8,
     marginTop: 0,
+    paddingTop: 0,
   },
   input: {
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 14,
     color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderWidth: 1.5,
+    borderColor: '#D8E4E2',
   },
   helpText: {
-    backgroundColor: Colors.background,
-    borderLeftWidth: 3,
+    backgroundColor: '#F5FAF9',
+    borderLeftWidth: 4,
     borderLeftColor: Colors.info,
-    borderRadius: 6,
-    padding: 10,
-    marginTop: 12,
-    marginBottom: 12,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    marginBottom: 16,
   },
-  helpTextContent: { fontSize: 12, color: Colors.textSecondary, lineHeight: 16 },
+  helpTextContent: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
   saveBtn: {
     backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingVertical: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 24,
+    marginHorizontal: 20,
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { fontSize: 16, fontWeight: '700' as const, color: Colors.white },
   paymentOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginVertical: 8,
-    backgroundColor: Colors.background,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginVertical: 10,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#D8E4E2',
   },
-  paymentOptionActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryFaded },
+  paymentOptionActive: { borderColor: Colors.primary, backgroundColor: '#F5FAF9' },
   radioButton: {
     width: 24,
     height: 24,

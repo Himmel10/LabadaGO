@@ -177,7 +177,13 @@ export const [OrderProvider, useOrders] = createContextHook(() => {
       o.id === orderId ? { ...o, ...updates, updatedAt: new Date().toISOString() } : o
     );
     await saveOrders(updated);
-    console.log('Updated order:', orderId, Object.keys(updates));
+    const savedOrder = updated.find(o => o.id === orderId);
+    console.log('Updated order:', orderId, {
+      keys: Object.keys(updates),
+      shopRating: updates.shopRating,
+      status: updates.status,
+      saved: savedOrder ? { shopRating: savedOrder.shopRating, status: savedOrder.status } : null,
+    });
 
     const order = currentOrders.find((o) => o.id === orderId);
 
@@ -213,19 +219,25 @@ export const [OrderProvider, useOrders] = createContextHook(() => {
   }, [saveOrders, addNotification]);
 
   const completeOrderWithEarnings = useCallback(async (orderId: string) => {
-    const currentOrders = ordersRef.current;
-    const order = currentOrders.find((o) => o.id === orderId);
+    // Reload from storage to ensure we have the latest order data (including any shopRating just set)
+    const storedOrdersJson = await AsyncStorage.getItem(ORDERS_KEY);
+    const storedOrders = storedOrdersJson ? JSON.parse(storedOrdersJson) : ordersRef.current;
+    
+    const order = storedOrders.find((o: Order) => o.id === orderId);
     if (!order || !order.totalAmount) return;
 
     const platformCommission = Math.round(order.totalAmount * PLATFORM_COMMISSION_RATE);
     const riderEarnings = Math.round((order.deliveryFee ?? 0) * (1 - RIDER_COMMISSION_RATE));
     const shopEarnings = order.totalAmount - platformCommission - (order.deliveryFee ?? 0) + Math.round((order.deliveryFee ?? 0) * RIDER_COMMISSION_RATE);
 
-    const updated = currentOrders.map((o) =>
+    // If order has shopRating (customer reviewed), keep status as 'rated'. Otherwise set to 'completed'
+    const newStatus: OrderStatus = (order.status === 'rated' || order.shopRating) ? 'rated' : 'completed';
+    
+    const updated = storedOrders.map((o: Order) =>
       o.id === orderId
         ? {
             ...o,
-            status: 'completed' as OrderStatus,
+            status: newStatus,
             platformCommission,
             riderEarnings,
             shopEarnings,
@@ -235,7 +247,14 @@ export const [OrderProvider, useOrders] = createContextHook(() => {
         : o
     );
     await saveOrders(updated);
-    console.log('Completed order with earnings:', orderId, { platformCommission, riderEarnings, shopEarnings });
+    console.log('Completed order with earnings:', orderId, { 
+      oldStatus: order.status, 
+      newStatus, 
+      shopRating: order.shopRating,
+      platformCommission, 
+      riderEarnings, 
+      shopEarnings 
+    });
   }, [saveOrders]);
 
   const addComplaint = useCallback(async (complaint: Omit<Complaint, 'id' | 'createdAt'>) => {

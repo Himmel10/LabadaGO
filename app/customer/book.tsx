@@ -10,10 +10,8 @@ export default function BookScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView edges={['top']} style={styles.headerSafe}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Book Laundry</Text>
-        </View>
+      <SafeAreaView edges={['top']} style={styles.headerWrap}>
+        <Text style={styles.title}>Book Laundry</Text>
       </SafeAreaView>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -74,9 +72,8 @@ export default function BookScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  headerSafe: { backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
-  header: { paddingHorizontal: 20, paddingVertical: 16 },
-  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text },
+  headerWrap: { backgroundColor: Colors.white, paddingBottom: 12 },
+  title: { fontSize: 24, fontWeight: '800' as const, color: Colors.text, paddingHorizontal: 20, paddingTop: 8 },
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
   card: { backgroundColor: Colors.white, borderRadius: 16, padding: 20, alignItems: 'center', gap: 12, marginBottom: 24, borderWidth: 1, borderColor: Colors.borderLight },
   cardTitle: { fontSize: 18, fontWeight: '800' as const, color: Colors.text },

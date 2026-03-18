@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, StatusBar, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowRight } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 
@@ -56,7 +55,7 @@ export default function WelcomeScreen() {
   if (user) return null;
 
   return (
-    <LinearGradient colors={['#0E7490', '#0891B2', '#22D3EE']} style={styles.container}>
+    <LinearGradient colors={['#1F5B4F', '#2D7A68', '#4FB6A6', '#7ED1C2']} style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       <Animated.View style={[styles.bubble1, {
@@ -92,7 +91,6 @@ export default function WelcomeScreen() {
           testID="get-started-btn"
         >
           <Text style={styles.primaryBtnText}>Sign In</Text>
-          <ArrowRight size={20} color={Colors.primaryDark} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -152,7 +150,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: 'rgba(255,255,255,0.9)',
   },
   featureText: {
     fontSize: 15,
@@ -191,7 +189,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(126,209,194,0.12)',
     top: 80,
     right: -40,
   },
@@ -200,7 +198,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(79,182,166,0.1)',
     bottom: 120,
     left: -30,
   },

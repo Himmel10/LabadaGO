@@ -1,10 +1,85 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, Animated, ScrollView } from 'react-native';
-import { MapPin, X, Navigation, Search, ChevronDown, Maximize2, Minimize2 } from 'lucide-react-native';
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ScrollView, Keyboard } from 'react-native';
+import { MapPin, X, ChevronDown } from 'lucide-react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import * as Location from 'expo-location';
-import * as Linking from 'expo-linking';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { getProvinces, getMunicipalities, getBarangays } from '@/constants/philippinesData';
+import { getCoordinates } from '@/constants/geocoordinates';
+
+// ⚠️ IMPORTANT: Replace with your actual Google Maps API Key from console.cloud.google.com
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDT8LKY3wErBbZ2WOEELzYHh6XCypsbpbk';
+
+const DropdownMenu = memo(({
+  items,
+  onSelect,
+  onClose: closeDropdown,
+  searchValue,
+  onSearchChange,
+}: {
+  items: string[];
+  onSelect: (item: string) => void;
+  onClose: () => void;
+  searchValue: string;
+  onSearchChange: (text: string) => void;
+}) => {
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(searchValue.toLowerCase())
+  );
+  const searchInputRef = useRef<TextInput>(null);
+
+  return (
+    <View style={styles.dropdownMenu}>
+      {/* Search Input */}
+      <View style={styles.searchInputContainer}>
+        <TextInput
+          ref={searchInputRef}
+          style={styles.searchInput}
+          placeholder="Search..."
+          placeholderTextColor={Colors.textTertiary}
+          value={searchValue}
+          onChangeText={onSearchChange}
+          returnKeyType="done"
+          blurOnSubmit={false}
+          editable={true}
+          selectTextOnFocus={false}
+        />
+      </View>
+
+      {/* Items or No Results */}
+      <ScrollView 
+        style={styles.dropdownScroll} 
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        scrollEnabled={filteredItems.length > 4}
+        keyboardShouldPersistTaps="always"
+      >
+        {filteredItems.length > 0 ? (
+          filteredItems.map((item) => (
+            <TouchableOpacity
+              key={item}
+              style={styles.dropdownItem}
+              onPress={() => {
+                Keyboard.dismiss();
+                setTimeout(() => {
+                  onSelect(item);
+                  closeDropdown();
+                }, 100);
+              }}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.dropdownItemText}>{item}</Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.noResultsContainer}>
+            <Text style={styles.noResultsText}>No results found</Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+});
 
 interface LocationPickerModalProps {
   visible: boolean;
@@ -39,74 +114,227 @@ export default function LocationPickerModal({
   onLocationSelected,
   onClose,
 }: LocationPickerModalProps) {
+  const { user } = useAuth();
+
   // Address fields
-  const [street, setStreet] = useState('');
-  const [barangay, setBarangay] = useState('');
-  const [municipality, setMunicipality] = useState('');
   const [province, setProvince] = useState('');
-  
-  // Optional fields
+  const [municipality, setMunicipality] = useState('');
+  const [barangay, setBarangay] = useState('');
+  const [street, setStreet] = useState('');
   const [landmark, setLandmark] = useState(selectedLandmark || '');
-  const [contactPerson, setContactPerson] = useState(selectedContactPerson || '');
-  const [contactNumber, setContactNumber] = useState(selectedContactNumber || '');
-  
+  const [contactPerson, setContactPerson] = useState(selectedContactPerson || user?.name || '');
+  const [contactNumber, setContactNumber] = useState(selectedContactNumber || user?.phone || '');
+
+  // Dropdown states
+  const [showProvinceDropdown, setShowProvinceDropdown] = useState(false);
+  const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
+  const [showBarangayDropdown, setShowBarangayDropdown] = useState(false);
+
+  // Search states
+  const [provinceSearch, setProvinceSearch] = useState('');
+  const [municipalitySearch, setMunicipalitySearch] = useState('');
+  const [barangaySearch, setBarangaySearch] = useState('');
+
+  // Map and location
   const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number }>(
     selectedCoords || DEFAULT_COORDS
   );
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [mapMode, setMapMode] = useState<'address' | 'map'>('map'); // Toggle between modes
-  const [isExpanded, setIsExpanded] = useState(false); // Track expansion state
   const mapViewRef = useRef<MapView>(null);
 
-  useEffect(() => {
-    if (visible && useCurrentLocation) {
-      getCurrentLocation();
-    }
-  }, [visible, useCurrentLocation]);
+  // Get dropdown data
+  const provinces = getProvinces();
+  const municipalities = province ? getMunicipalities(province) : [];
+  const barangays = province && municipality ? getBarangays(province, municipality) : [];
 
-  const getCurrentLocation = async () => {
+  // Reset secondary dropdowns when province changes
+  useEffect(() => {
+    setMunicipality('');
+    setBarangay('');
+  }, [province]);
+
+  // Reset barangay when municipality changes
+  useEffect(() => {
+    setBarangay('');
+  }, [municipality]);
+
+  // Auto-fill user contact info on mount
+  useEffect(() => {
+    if (visible && user && !contactPerson) {
+      setContactPerson(user.name || '');
+      setContactNumber(user.phone || '');
+    }
+  }, [visible, user]);
+
+  // Geocode address and update map coordinates
+  const geocodeAddress = useCallback(async () => {
+    console.log('geocodeAddress called with:', { street, barangay, municipality, province });
+    
+    if (!barangay || !municipality || !province) {
+      console.log('Address incomplete, skipping geocoding');
+      return;
+    }
+
     try {
-      setIsLoading(true);
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required');
-        setUseCurrentLocation(false);
-        setIsLoading(false);
+      let foundCoords: { latitude: number; longitude: number } | null = null;
+
+      // Try 1: Use local geocoordinates database first (instant, no API calls)
+      console.log('Trying local geocoordinates database...');
+      foundCoords = getCoordinates(municipality, province);
+      if (foundCoords) {
+        console.log('Found in local database:', foundCoords);
+        setCurrentCoords(foundCoords);
+        
+        // Animate map immediately
+        setTimeout(() => {
+          if (mapViewRef.current && foundCoords) {
+            mapViewRef.current.animateToRegion(
+              {
+                latitude: foundCoords.latitude,
+                longitude: foundCoords.longitude,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
+              },
+              500
+            );
+          }
+        }, 100);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      console.log('Not in local database, trying Google Maps Geocoding API...');
+      
+      // Try 2: Use Google Maps Geocoding API
+      if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes('YOUR_API_KEY')) {
+        console.warn('Google Maps API key not configured. Using OpenCage fallback.');
+        // Continue to OpenCage fallback below
+      } else {
+        const addresses = [
+          `${barangay}, ${municipality}, ${province}, Philippines`,
+          `${municipality}, ${province}, Philippines`,
+          `${province}, Philippines`
+        ];
 
-      setCurrentCoords({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+        for (const fullAddress of addresses) {
+          console.log('Trying Google Maps with:', fullAddress);
+          
+          const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddress)}&key=${GOOGLE_MAPS_API_KEY}`;
+          
+          try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            console.log('Google Maps response status:', data.status);
+            
+            if (data.status === 'OK' && data.results && data.results.length > 0) {
+              const result = data.results[0];
+              foundCoords = {
+                latitude: result.geometry.location.lat,
+                longitude: result.geometry.location.lng
+              };
+              console.log('Found via Google Maps:', foundCoords, 'Address:', result.formatted_address);
+              setCurrentCoords(foundCoords);
+              
+              // Animate map
+              setTimeout(() => {
+                if (mapViewRef.current && foundCoords) {
+                  mapViewRef.current.animateToRegion(
+                    {
+                      latitude: foundCoords.latitude,
+                      longitude: foundCoords.longitude,
+                      latitudeDelta: 0.02,
+                      longitudeDelta: 0.02,
+                    },
+                    500
+                  );
+                }
+              }, 100);
+              return;
+            } else if (data.status === 'ZERO_RESULTS') {
+              console.log('No results for:', fullAddress);
+            } else if (data.status === 'REQUEST_DENIED') {
+              console.error('API key invalid or request denied:', data.error_message);
+              break; // Stop trying with invalid key
+            }
+          } catch (error) {
+            console.log('Google Maps fetch error:', error instanceof Error ? error.message : String(error));
+            continue;
+          }
+        }
+      }
 
-      // Only update coordinates for pinpointing - do not auto-fill form fields
-      setIsLoading(false);
+      // Try 3: Fallback to OpenCage if Google Maps not configured or failed
+      console.log('Google Maps unavailable, trying OpenCage API...');
+      const addresses = [
+        `${municipality}, ${province}, Philippines`,
+        `${province}, Philippines`
+      ];
+
+      for (const fullAddress of addresses) {
+        console.log('Trying OpenCage with:', fullAddress);
+        
+        const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(fullAddress)}&language=en&limit=1&countrycode=ph`;
+        
+        try {
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            console.log('OpenCage response not ok:', response.status);
+            continue;
+          }
+          
+          const data = await response.json();
+          console.log('OpenCage response:', data);
+          
+          if (data && data.results && data.results.length > 0) {
+            const result = data.results[0];
+            foundCoords = {
+              latitude: result.geometry.lat,
+              longitude: result.geometry.lng
+            };
+            console.log('Found via OpenCage:', foundCoords);
+            setCurrentCoords(foundCoords);
+            
+            // Animate map
+            setTimeout(() => {
+              if (mapViewRef.current && foundCoords) {
+                mapViewRef.current.animateToRegion(
+                  {
+                    latitude: foundCoords.latitude,
+                    longitude: foundCoords.longitude,
+                    latitudeDelta: 0.02,
+                    longitudeDelta: 0.02,
+                  },
+                  500
+                );
+              }
+            }, 100);
+            return;
+          }
+        } catch (error) {
+          console.log('OpenCage error:', error instanceof Error ? error.message : String(error));
+          continue;
+        }
+      }
+      
+      console.log('Could not find coordinates from any source');
     } catch (error) {
-      Alert.alert('Error', 'Failed to get current location');
-      setUseCurrentLocation(false);
-      setIsLoading(false);
+      console.error('Geocoding error:', error instanceof Error ? error.message : String(error));
     }
-  };
+  }, [barangay, municipality, province]);
 
-  const handleMapDrag = async (region: any) => {
-    const newCoords = {
-      latitude: region.latitude,
-      longitude: region.longitude,
-    };
-    setCurrentCoords(newCoords);
-    // Only update coordinates for pinpointing - do not auto-fill form fields
-  };
+  // Trigger geocoding when address details change
+  useEffect(() => {
+    console.log('useEffect triggered, scheduling geocode');
+    const timer = setTimeout(() => {
+      console.log('Timeout fired, calling geocodeAddress');
+      geocodeAddress();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [geocodeAddress]);
 
   const handleConfirm = () => {
-    // Validate required fields
     if (!street.trim() || !barangay.trim() || !municipality.trim() || !province.trim()) {
-      Alert.alert('Error', 'Please fill in all address fields (Street, Barangay, Municipality, Province)');
+      Alert.alert('Error', 'Please fill in all address fields');
       return;
     }
 
@@ -131,324 +359,250 @@ export default function LocationPickerModal({
     onClose();
   };
 
+  const DropdownButton = ({
+    label,
+    value,
+    onPress,
+    disabled = false,
+  }: {
+    label: string;
+    value: string;
+    onPress: () => void;
+    disabled?: boolean;
+  }) => (
+    <TouchableOpacity
+      style={[styles.dropdownButton, disabled && styles.dropdownButtonDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      <View style={styles.dropdownButtonContent}>
+        <Text style={[styles.dropdownButtonLabel, !value && styles.placeholderText]}>
+          {value || `Select ${label}`}
+        </Text>
+      </View>
+      <ChevronDown size={20} color={disabled ? Colors.textTertiary : Colors.primary} />
+    </TouchableOpacity>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.container}>
-        <View style={[styles.content, isExpanded && styles.contentExpanded]}>
-          {/* Shopee-style Header */}
+        <View style={styles.content}>
+          {/* Header with X button on right */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={onClose}>
-                <X size={24} color={Colors.text} />
-              </TouchableOpacity>
-              <View>
-                <Text style={styles.title}>Edit Delivery Address</Text>
-                <Text style={styles.headerSubtitle}>Complete all required fields</Text>
+              <Text style={styles.title}>Edit Address</Text>
+              <Text style={styles.headerSubtitle}>Complete all required fields</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <X size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView 
+            style={styles.scrollableContent} 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+          >
+            <View style={styles.formSection}>
+              <Text style={styles.sectionTitle}>Address Details</Text>
+
+              {/* Province Dropdown */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Province *</Text>
+                <DropdownButton
+                  label="Province"
+                  value={province}
+                  onPress={() => {
+                    setShowProvinceDropdown(!showProvinceDropdown);
+                    setProvinceSearch(''); // Reset search when opening
+                  }}
+                />
+                {showProvinceDropdown && (
+                  <DropdownMenu
+                    items={provinces}
+                    onSelect={setProvince}
+                    onClose={() => {
+                      setShowProvinceDropdown(false);
+                      setProvinceSearch('');
+                    }}
+                    searchValue={provinceSearch}
+                    onSearchChange={setProvinceSearch}
+                  />
+                )}
+              </View>
+
+              {/* Municipality Dropdown */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Municipality / City *</Text>
+                <DropdownButton
+                  label="Municipality"
+                  value={municipality}
+                  onPress={() => {
+                    setShowMunicipalityDropdown(!showMunicipalityDropdown);
+                    setMunicipalitySearch(''); // Reset search when opening
+                  }}
+                  disabled={!province}
+                />
+                {showMunicipalityDropdown && (
+                  <DropdownMenu
+                    items={municipalities}
+                    onSelect={setMunicipality}
+                    onClose={() => {
+                      setShowMunicipalityDropdown(false);
+                      setMunicipalitySearch('');
+                    }}
+                    searchValue={municipalitySearch}
+                    onSearchChange={setMunicipalitySearch}
+                  />
+                )}
+              </View>
+
+              {/* Barangay Dropdown */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Barangay *</Text>
+                <DropdownButton
+                  label="Barangay"
+                  value={barangay}
+                  onPress={() => {
+                    setShowBarangayDropdown(!showBarangayDropdown);
+                    setBarangaySearch(''); // Reset search when opening
+                  }}
+                  disabled={!municipality}
+                />
+                {showBarangayDropdown && (
+                  <DropdownMenu
+                    items={barangays}
+                    onSelect={setBarangay}
+                    onClose={() => {
+                      setShowBarangayDropdown(false);
+                      setBarangaySearch('');
+                    }}
+                    searchValue={barangaySearch}
+                    onSearchChange={setBarangaySearch}
+                  />
+                )}
+              </View>
+
+              {/* Street Address */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Street Address *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="e.g., Purok 3, House No. 45"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={street}
+                  onChangeText={setStreet}
+                />
+              </View>
+
+              {/* Landmark */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Landmark (Optional)</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="e.g., Near ABC Elementary School"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={landmark}
+                  onChangeText={setLandmark}
+                />
+              </View>
+
+              {/* Contact Person */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Contact Person *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="e.g., John Doe"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={contactPerson}
+                  onChangeText={setContactPerson}
+                />
+              </View>
+
+              {/* Contact Number */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Contact Number *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="+63 9xx xxx xxxx"
+                  placeholderTextColor={Colors.textTertiary}
+                  value={contactNumber}
+                  onChangeText={setContactNumber}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              {/* Map Section */}
+              <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Pinpoint Location on Map</Text>
+              <Text style={styles.mapHint}>Drag the map to adjust the exact location</Text>
+            </View>
+
+            {/* Map */}
+            <View style={styles.mapContainer}>
+              <MapView
+                ref={mapViewRef}
+                provider={PROVIDER_GOOGLE}
+                style={styles.mapView}
+                initialRegion={{
+                  latitude: currentCoords.latitude,
+                  longitude: currentCoords.longitude,
+                  latitudeDelta: 0.02,
+                  longitudeDelta: 0.02,
+                }}
+                onRegionChangeComplete={(region) => {
+                  setCurrentCoords({
+                    latitude: region.latitude,
+                    longitude: region.longitude,
+                  });
+                }}
+                scrollEnabled={true}
+                zoomEnabled={true}
+                rotateEnabled={false}
+                pitchEnabled={false}
+              >
+              </MapView>
+
+              {/* Needle-style center pinpoint */}
+              <View style={styles.mapCenterMarker}>
+                <View style={styles.needlePin}>
+                  <View style={styles.needleBall} />
+                  <View style={styles.needlePoint} />
+                </View>
               </View>
             </View>
-          </View>
 
-          {mapMode === 'map' ? (
-            <>
-              {/* Form Fields - Always visible above map */}
-              <ScrollView 
-                style={styles.scrollableContent}
-                showsVerticalScrollIndicator={false}
+            {/* Info Card */}
+            <View style={styles.infoCard}>
+              <MapPin size={18} color={Colors.primary} />
+              <Text style={styles.infoText}>
+                {province && municipality && barangay && street
+                  ? `${street}, ${barangay}, ${municipality}, ${province}`
+                  : 'Complete address details above'}
+              </Text>
+            </View>
+
+            {/* Buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={onClose}
+                activeOpacity={0.7}
               >
-                <View style={styles.formSection}>
-                  <Text style={styles.sectionTitle}>Address Details</Text>
-                  
-                  {/* Street Address */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Street Address *</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., Purok 3"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={street}
-                      onChangeText={setStreet}
-                    />
-                  </View>
-
-                  {/* Barangay */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Barangay *</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., Barangay Ipil"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={barangay}
-                      onChangeText={setBarangay}
-                    />
-                  </View>
-
-                  {/* Municipality - Province Row */}
-                  <View style={styles.twoColumnRow}>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.label}>Municipality / City *</Text>
-                      <TextInput
-                        style={styles.formInput}
-                        placeholder="e.g., Cantilan"
-                        placeholderTextColor={Colors.textTertiary}
-                        value={municipality}
-                        onChangeText={setMunicipality}
-                      />
-                    </View>
-
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.label}>Province *</Text>
-                      <TextInput
-                        style={styles.formInput}
-                        placeholder="e.g., Surigao del Sur"
-                        placeholderTextColor={Colors.textTertiary}
-                        value={province}
-                        onChangeText={setProvince}
-                      />
-                    </View>
-                  </View>
-
-                  {/* Landmark */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Landmark (Optional)</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., Near Ipil Elementary School"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={landmark}
-                      onChangeText={setLandmark}
-                    />
-                  </View>
-
-                  {/* Contact Person */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Contact Person *</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., Charlie"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={contactPerson}
-                      onChangeText={setContactPerson}
-                    />
-                  </View>
-
-                  {/* Contact Number */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Contact Number *</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="+63 9xx xxx xxxx"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={contactNumber}
-                      onChangeText={setContactNumber}
-                      keyboardType="phone-pad"
-                    />
-                  </View>
-
-                  {/* Map View using Google Maps */}
-                  <View style={styles.mapSectionHeader}>
-                    <Text style={styles.sectionTitle}>Pinpoint Location on Map</Text>
-                  </View>
-                </View>
-
-                <View style={styles.mapContainer}>
-                  <MapView
-                    ref={mapViewRef}
-                    provider={PROVIDER_GOOGLE}
-                    style={styles.webview}
-                    initialRegion={{
-                      latitude: currentCoords.latitude,
-                      longitude: currentCoords.longitude,
-                      latitudeDelta: 0.05,
-                      longitudeDelta: 0.05,
-                    }}
-                    onRegionChangeComplete={(region) => {
-                      setCurrentCoords({
-                        latitude: region.latitude,
-                        longitude: region.longitude,
-                      });
-                      handleMapDrag({
-                        latitude: region.latitude,
-                        longitude: region.longitude,
-                      });
-                    }}
-                    scrollEnabled={true}
-                    zoomEnabled={true}
-                    rotateEnabled={false}
-                    pitchEnabled={false}
-                  >
-                    {/* Central marker with Shopee-style pin */}
-                    <Marker
-                      coordinate={{
-                        latitude: currentCoords.latitude,
-                        longitude: currentCoords.longitude,
-                      }}
-                      title="Pinpointed Location"
-                      description={`${currentCoords.latitude.toFixed(6)}, ${currentCoords.longitude.toFixed(6)}`}
-                    />
-                  </MapView>
-                  
-                  {/* Shopee-style center marker overlay */}
-                  <View style={styles.mapCenterMarker}>
-                    <View style={styles.mapPin} />
-                  </View>
-                </View>
-
-                {/* Location Info Card */}
-                <View style={styles.infoCard}>
-                  <View style={styles.infoHeader}>
-                    <MapPin size={18} color="#2563EB" />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.infoTitle}>Pinpointed Location</Text>
-                      <Text style={styles.coordsText}>
-                        📍 {currentCoords.latitude.toFixed(6)}, {currentCoords.longitude.toFixed(6)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </ScrollView>
-            </>
-          ) : (
-            <>
-              {/* Address Form Mode - Scrollable */}
-              <ScrollView 
-                style={styles.addressFormContainer}
-                showsVerticalScrollIndicator={false}
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleConfirm}
+                activeOpacity={0.7}
               >
-                <View style={styles.formSection}>
-                  <Text style={styles.sectionTitle}>Delivery Address Details</Text>
-                  
-                  {/* Street Address */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Street Address *</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., Purok 3"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={street}
-                      onChangeText={setStreet}
-                    />
-                  </View>
+                <Text style={styles.confirmButtonText}>Confirm Address</Text>
+              </TouchableOpacity>
+            </View>
 
-                  {/* Barangay */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Barangay *</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., Barangay Ipil"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={barangay}
-                      onChangeText={setBarangay}
-                    />
-                  </View>
-                  {/* Municipality - Province Row */}
-                  <View style={[styles.twoColumnRow, { marginTop: 20 }]}>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.label}>Municipality / City *</Text>
-                      <TextInput
-                        style={styles.formInput}
-                        placeholder="e.g., Cantilan"
-                        placeholderTextColor={Colors.textTertiary}
-                        value={municipality}
-                        onChangeText={setMunicipality}
-                      />
-                    </View>
-
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.label}>Province *</Text>
-                      <TextInput
-                        style={styles.formInput}
-                        placeholder="e.g., Surigao del Sur"
-                        placeholderTextColor={Colors.textTertiary}
-                        value={province}
-                        onChangeText={setProvince}
-                      />
-                    </View>
-                  </View>
-
-                  {/* Landmark */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Landmark (Optional)</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g., Near Ipil Elementary School"
-                      placeholderTextColor={Colors.textTertiary}
-                      value={landmark}
-                      onChangeText={setLandmark}
-                    />
-                  </View>
-
-                  {/* Contact Person - Contact Number Row */}
-                  <View style={styles.twoColumnRow}>
-                    <View style={[styles.formGroup, { flex: 1.5 }]}>
-                      <Text style={styles.label}>Contact Person *</Text>
-                      <TextInput
-                        style={styles.formInput}
-                        placeholder="e.g., Charlie"
-                        placeholderTextColor={Colors.textTertiary}
-                        value={contactPerson}
-                        onChangeText={setContactPerson}
-                      />
-                    </View>
-
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                      <Text style={styles.label}>Contact Number *</Text>
-                      <TextInput
-                        style={styles.formInput}
-                        placeholder="+63 9xx xxx xxxx"
-                        placeholderTextColor={Colors.textTertiary}
-                        value={contactNumber}
-                        onChangeText={setContactNumber}
-                        keyboardType="phone-pad"
-                      />
-                    </View>
-                  </View>
-
-                  {/* Use Current Location Button */}
-                  <TouchableOpacity
-                    style={[styles.locationBtn, isLoading && styles.locationBtnDisabled]}
-                    onPress={() => {
-                      if (!isLoading) {
-                        setUseCurrentLocation(!useCurrentLocation);
-                      }
-                    }}
-                    activeOpacity={0.8}
-                    disabled={isLoading}
-                  >
-                    <Navigation size={18} color={Colors.primary} />
-                    <Text style={styles.locationBtnText}>
-                      {isLoading ? 'Getting location...' : 'Use My Current Location'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {/* Tip Box */}
-                  <View style={styles.tipBox}>
-                    <Text style={styles.tipText}>
-                      💡 Tip: Switch to map view to pinpoint your exact location.
-                    </Text>
-                  </View>
-
-                  {/* Switch to Map Button */}
-                  <TouchableOpacity
-                    style={styles.modeSwitchButton}
-                    onPress={() => setMapMode('map')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.modeSwitchText}>Use Map to Pinpoint Location</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </>
-          )}
-
-          {/* Footer Buttons */}
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.85}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm} activeOpacity={0.85}>
-              <Text style={styles.confirmBtnText}>Confirm Location</Text>
-            </TouchableOpacity>
-          </View>
+            <View style={{ height: 20 }} />
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -462,44 +616,22 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   content: {
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: '95%',
-    paddingBottom: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  contentExpanded: {
-    maxHeight: '95%',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderLight,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-    gap: 12,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   title: {
     fontSize: 18,
@@ -511,136 +643,15 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
+  closeButton: {
+    padding: 8,
+  },
   scrollableContent: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  mapContainer: {
-    height: 320,
-    position: 'relative',
-    backgroundColor: Colors.surface,
-    marginHorizontal: 12,
-    marginVertical: 12,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  mapContainerExpanded: {
-    minHeight: '100%',
-  },
-  mapCenterMarker: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -25,
-    marginLeft: -25,
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    pointerEvents: 'none',
-  },
-  mapPin: {
-    width: 36,
-    height: 36,
-    backgroundColor: '#2563EB',
-    borderRadius: 18,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  webview: {
-    flex: 1,
-  },
-  mapSectionHeader: {
-    paddingHorizontal: 12,
-    paddingTop: 20,
-    paddingBottom: 8,
-  },
-  quickInfoCard: {
-    marginHorizontal: 12,
-    marginTop: 10,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    zIndex: 10,
-  },
-  quickInfoContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  quickInfoText: {
-    flex: 1,
-  },
-  quickInfoLabel: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.white,
-    opacity: 0.9,
-  },
-  quickInfoAddress: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.white,
-    marginTop: 2,
-  },
-  infoCard: {
-    backgroundColor: Colors.surface,
-    marginHorizontal: 12,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 8,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  infoTitle: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: Colors.text,
-  },
-  addressText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    lineHeight: 20,
-  },
-  coordsDisplayCompact: {
-    backgroundColor: Colors.primaryFaded,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  coordsDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.primaryFaded,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  coordsText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: Colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   formSection: {
-    backgroundColor: Colors.background,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 14,
@@ -649,127 +660,190 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   formGroup: {
-    marginBottom: 12,
-  },
-  twoColumnRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   label: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600' as const,
     color: Colors.text,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: 10,
+  },
+  dropdownButtonDisabled: {
+    opacity: 0.5,
+  },
+  dropdownButtonContent: {
+    flex: 1,
+  },
+  dropdownButtonLabel: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  dropdownMenu: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    maxHeight: 200,
+    marginTop: 4,
+    overflow: 'hidden',
+  },
+  searchInputContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+    padding: 8,
+  },
+  searchInput: {
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  dropdownScroll: {
+    padding: 4,
+  },
+  dropdownItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500' as const,
+  },
+  noResultsContainer: {
+    paddingHorizontal: 14,
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontStyle: 'italic' as const,
+  },
+  placeholderText: {
+    color: Colors.textTertiary,
   },
   formInput: {
     backgroundColor: Colors.white,
-    borderRadius: 10,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.text,
   },
-  modeSwitchButton: {
-    marginHorizontal: 12,
-    marginVertical: 20,
-    paddingVertical: 12,
-    backgroundColor: Colors.primary,
+  mapContainer: {
+    height: 320,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginVertical: 16,
+    position: 'relative',
+  },
+  mapView: {
+    flex: 1,
+  },
+  mapCenterMarker: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -12 }, { translateY: -28 }],
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  needlePin: {
+    alignItems: 'center',
+  },
+  needleBall: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: '#DC143C',
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
+    shadowColor: '#DC143C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    elevation: 8,
   },
-  modeSwitch: {
+  needlePoint: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#DC143C',
+    marginTop: -1,
+  },
+  mapHint: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 12,
+    fontStyle: 'italic' as const,
+  },
+  infoCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    marginHorizontal: -20,
-    marginBottom: -16,
-    marginTop: 8,
+    alignItems: 'flex-start',
+    backgroundColor: Colors.primaryFaded,
+    borderRadius: 12,
+    padding: 14,
+    gap: 12,
+    marginVertical: 16,
   },
-  modeSwitchText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.white,
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.primaryDark,
+    fontWeight: '500' as const,
+    lineHeight: 18,
   },
-  footer: {
+  buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
   },
-  cancelBtn: {
+  cancelButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Colors.border,
+    borderWidth: 1.5,
+    borderColor: Colors.borderLight,
     alignItems: 'center',
   },
-  cancelBtnText: {
-    fontSize: 16,
+  cancelButtonText: {
+    fontSize: 15,
     fontWeight: '700' as const,
     color: Colors.text,
   },
-  confirmBtn: {
+  confirmButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: Colors.primary,
     alignItems: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  confirmBtnText: {
-    fontSize: 16,
+  confirmButtonText: {
+    fontSize: 15,
     fontWeight: '700' as const,
     color: Colors.white,
-  },
-  addressFormContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  locationBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    gap: 10,
-    marginBottom: 12,
-  },
-  locationBtnDisabled: {
-    opacity: 0.6,
-  },
-  locationBtnText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.primary,
-  },
-  tipBox: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF9800',
-  },
-  tipText: {
-    fontSize: 12,
-    color: '#F57C00',
-    lineHeight: 17,
   },
 });

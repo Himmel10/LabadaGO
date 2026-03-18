@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
-import { Calendar, Clock, X, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 
 interface DateTimePickerModalProps {
@@ -20,8 +20,6 @@ export default function DateTimePickerModal({
 }: DateTimePickerModalProps) {
   const [currentDate, setCurrentDate] = useState(selectedDate || minDate);
   const [displayMonth, setDisplayMonth] = useState(new Date(selectedDate || minDate));
-  const [hourStr, setHourStr] = useState(String(selectedDate?.getHours() || 9).padStart(2, '0'));
-  const [minuteStr, setMinuteStr] = useState(String(selectedDate?.getMinutes() || 0).padStart(2, '0'));
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -61,20 +59,8 @@ export default function DateTimePickerModal({
   };
 
   const handleConfirm = () => {
-    let hour = parseInt(hourStr);
-    let minute = parseInt(minuteStr);
-
-    if (isNaN(hour) || hour < 0 || hour > 23) {
-      Alert.alert('Invalid Hour', 'Please enter a valid hour (0-23)');
-      return;
-    }
-    if (isNaN(minute) || minute < 0 || minute > 59) {
-      Alert.alert('Invalid Minute', 'Please enter a valid minute (0-59)');
-      return;
-    }
-
     const finalDate = new Date(currentDate);
-    finalDate.setHours(hour, minute, 0);
+    finalDate.setHours(9, 0, 0);
     onDateTimeSelected(finalDate);
     onClose();
   };
@@ -95,7 +81,7 @@ export default function DateTimePickerModal({
       <View style={styles.container}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.title}>Pickup Date & Time</Text>
+            <Text style={styles.title}>Pickup Date</Text>
             <TouchableOpacity onPress={onClose}>
               <X size={24} color={Colors.text} />
             </TouchableOpacity>
@@ -160,45 +146,14 @@ export default function DateTimePickerModal({
               </View>
 
               {/* Selected Date Display */}
-              <View style={styles.selectedDateBadge}>
+              <TouchableOpacity 
+                style={styles.selectedDateBadge}
+                onPress={() => setCurrentDate(new Date())}
+                activeOpacity={0.7}
+              >
                 <Calendar size={16} color={Colors.primary} />
                 <Text style={styles.selectedDateText}>{formatDate(currentDate)}</Text>
-              </View>
-            </View>
-
-            {/* Time Selection */}
-            <View style={styles.timeSection}>
-              <Text style={styles.label}>Select Time</Text>
-              <View style={styles.timeInputContainer}>
-                <Clock size={18} color={Colors.primary} />
-                <TextInput
-                  style={styles.timeField}
-                  placeholder="HH"
-                  placeholderTextColor={Colors.textTertiary}
-                  maxLength={2}
-                  keyboardType="number-pad"
-                  value={hourStr}
-                  onChangeText={(text) => {
-                    if (text === '' || /^\d{0,2}$/.test(text)) {
-                      setHourStr(text);
-                    }
-                  }}
-                />
-                <Text style={styles.timeSeparator}>:</Text>
-                <TextInput
-                  style={styles.timeField}
-                  placeholder="MM"
-                  placeholderTextColor={Colors.textTertiary}
-                  maxLength={2}
-                  keyboardType="number-pad"
-                  value={minuteStr}
-                  onChangeText={(text) => {
-                    if (text === '' || /^\d{0,2}$/.test(text)) {
-                      setMinuteStr(text);
-                    }
-                  }}
-                />
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
 

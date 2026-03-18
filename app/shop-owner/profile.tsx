@@ -11,7 +11,7 @@ import { ImageUploadModal } from '@/components/ImageUploadModal';
 import { uploadShopLogo } from '@/lib/imageUpload';
 
 export default function ShopProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { getShopByOwner, updateShop, getReviewsByShop } = useShops();
   const router = useRouter();
   const shop = getShopByOwner(user?.id ?? '');
@@ -33,6 +33,29 @@ export default function ShopProfileScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: async () => { await logout(); router.replace('/'); } },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all associated data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await deleteAccount();
+            if (success) {
+              Alert.alert('Account Deleted', 'Your account has been deleted successfully.');
+              router.replace('/');
+            } else {
+              Alert.alert('Error', 'Failed to delete account. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const openEditModal = () => {
@@ -202,6 +225,10 @@ export default function ShopProfileScreen() {
           <View style={[styles.menuIcon, { backgroundColor: Colors.info + '15' }]}><HelpCircle size={20} color={Colors.info} /></View>
           <Text style={styles.menuLabel}>Help & Support</Text>
           <ChevronRight size={18} color={Colors.textTertiary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount} activeOpacity={0.7}>
+          <Text style={styles.deleteText}>Delete Account</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
@@ -374,9 +401,14 @@ const styles = StyleSheet.create({
   },
   menuIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   menuLabel: { fontSize: 15, fontWeight: '600' as const, color: Colors.text, flex: 1 },
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 12, paddingVertical: 16, backgroundColor: Colors.errorLight, borderRadius: 16,
+  },
+  deleteText: { fontSize: 16, fontWeight: '700' as const, color: Colors.error },
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginTop: 20, paddingVertical: 16, backgroundColor: Colors.errorLight, borderRadius: 16,
+    marginTop: 8, paddingVertical: 16, backgroundColor: Colors.errorLight, borderRadius: 16,
   },
   logoutText: { fontSize: 16, fontWeight: '700' as const, color: Colors.error },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

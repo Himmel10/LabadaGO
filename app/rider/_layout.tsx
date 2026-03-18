@@ -25,8 +25,8 @@ export default function RiderLayout() {
       <Tabs.Screen name="tracking" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="help" options={{ href: null }} />
-      <Tabs.Screen name="messages" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="messages" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="notifications" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );
 }

@@ -97,18 +97,14 @@ export default function BookLaundryScreen() {
   };
 
   const formatPickupDateTime = (date: Date | null) => {
-    if (!date) return 'Select date & time';
+    if (!date) return 'Select date';
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    let dateStr = '';
-    if (date.toDateString() === today.toDateString()) dateStr = 'Today';
-    else if (date.toDateString() === tomorrow.toDateString()) dateStr = 'Tomorrow';
-    else dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    return `${dateStr} at ${timeStr}`;
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const handleSelectShop = (shop: LaundryShop) => {
@@ -129,7 +125,7 @@ export default function BookLaundryScreen() {
       return;
     }
     if (!pickupSchedule) {
-      Alert.alert('Error', 'Please select pickup date and time');
+      Alert.alert('Error', 'Please select pickup date');
       return;
     }
 

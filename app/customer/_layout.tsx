@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useRouter } from 'expo-router';
-import { Home, ShoppingBag, Package, User } from 'lucide-react-native';
+import { Home, ShoppingBag, Package, CircleUser } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 
 export default function CustomerLayout() {
@@ -49,11 +49,15 @@ export default function CustomerLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <CircleUser size={size} color={color} />,
         }}
       />
-      <Tabs.Screen name="messages" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="messages" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="notifications" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="reviews" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="help" options={{ href: null }} />
+      <Tabs.Screen name="privacy" options={{ href: null }} />
     </Tabs>
   );
 }

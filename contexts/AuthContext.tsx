@@ -261,6 +261,58 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.removeItem(AUTH_KEY);
   }, [user]);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    if (!user) {
+      throw new Error('No user logged in');
+    }
+
+    const storedPassword = passwords[user.id];
+    if (storedPassword !== currentPassword) {
+      throw new Error('Current password is incorrect');
+    }
+
+    if (newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters');
+    }
+
+    const updatedPasswords = { ...passwords, [user.id]: newPassword };
+    await savePasswords(updatedPasswords);
+    console.log('Password changed for user:', user.name);
+    return true;
+  }, [user, passwords, savePasswords]);
+
+  const deleteAccount = useCallback(async (userId?: string): Promise<boolean> => {
+    try {
+      const targetUserId = userId || user?.id;
+      if (!targetUserId) {
+        throw new Error('No user to delete');
+      }
+
+      // Remove user from all users list
+      const updatedUsers = allUsers.filter((u) => u.id !== targetUserId);
+      await saveUsers(updatedUsers);
+
+      // Remove user's password
+      const updatedPasswords = { ...passwords };
+      delete updatedPasswords[targetUserId];
+      await savePasswords(updatedPasswords);
+
+      // If deleting current logged-in user, logout
+      if (targetUserId === user?.id) {
+        setUser(null);
+        await AsyncStorage.removeItem(AUTH_KEY);
+        console.log('Account deleted and logged out:', user?.name);
+      } else {
+        console.log('Account deleted by admin:', targetUserId);
+      }
+
+      return true;
+    } catch (error) {
+      console.log('Failed to delete account:', error);
+      return false;
+    }
+  }, [user, allUsers, passwords, saveUsers, savePasswords]);
+
   const getAvailableRiders = useCallback(() => {
     return allUsers.filter((u) => u.role === 'rider' && u.isAvailable !== false);
   }, [allUsers]);
@@ -280,6 +332,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     updateUser,
     addToWallet,
     logout,
+    changePassword,
+    deleteAccount,
     getAvailableRiders,
     getUsersByRole,
     suspendUser,

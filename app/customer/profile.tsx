@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { User, MapPin, Phone, Mail, ChevronRight, Settings, HelpCircle, Star, Shield, Camera, Edit } from 'lucide-react-native';
+import { User, Phone, Mail, MapPin, ChevronRight, Settings, HelpCircle, Star, Shield, Camera, Edit, CircleUser } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { ImageUploadModal } from '@/components/ImageUploadModal';
@@ -11,7 +11,6 @@ import { EditProfileModal } from '@/components/EditProfileModal';
 import { uploadProfileImage } from '@/lib/imageUpload';
 
 const MENU_ITEMS = [
-  { icon: MapPin, label: 'My Addresses', color: Colors.primary },
   { icon: Star, label: 'My Reviews', color: Colors.accent },
   { icon: Settings, label: 'Settings', color: Colors.textSecondary },
   { icon: HelpCircle, label: 'Help & Support', color: Colors.info },
@@ -65,6 +64,25 @@ export default function CustomerProfileScreen() {
       Alert.alert('Error', 'Failed to upload profile picture');
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  const handleMenuItemPress = (label: string) => {
+    switch(label) {
+      case 'My Reviews':
+        router.push('/customer/reviews');
+        break;
+      case 'Settings':
+        router.push('/customer/settings');
+        break;
+      case 'Help & Support':
+        router.push('/customer/help');
+        break;
+      case 'Privacy Policy':
+        router.push('/customer/privacy');
+        break;
+      default:
+        break;
     }
   };
 
@@ -123,7 +141,12 @@ export default function CustomerProfileScreen() {
           {MENU_ITEMS.map((item, i) => {
             const Icon = item.icon;
             return (
-              <TouchableOpacity key={i} style={styles.menuItem} activeOpacity={0.7}>
+              <TouchableOpacity 
+                key={i} 
+                style={styles.menuItem} 
+                activeOpacity={0.7}
+                onPress={() => handleMenuItemPress(item.label)}
+              >
                 <View style={[styles.menuIcon, { backgroundColor: item.color + '15' }]}>
                   <Icon size={20} color={item.color} />
                 </View>

@@ -23,8 +23,8 @@ export default function ShopOwnerLayout() {
       <Tabs.Screen name="wallet" options={{ title: 'Wallet', tabBarIcon: ({ color, size }) => <Wallet size={size} color={color} /> }} />
       <Tabs.Screen name="services" options={{ title: 'Services', tabBarIcon: ({ color, size }) => <WashingMachine size={size} color={color} /> }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <CircleUser size={size} color={color} /> }} />
-      <Tabs.Screen name="messages" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="messages" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="notifications" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="analytics" options={{ href: null }} />
       <Tabs.Screen name="reviews" options={{ href: null }} />
     </Tabs>

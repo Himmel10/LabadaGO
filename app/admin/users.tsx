@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { User, Store, Bike, Shield, Users, CircleX, CircleCheck, Search } from 'lucide-react-native';
+import { User, Store, Bike, Shield, Users, CircleX, CircleCheck, Search, Trash2 } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
 import { UserRole } from '@/types';
@@ -15,7 +15,7 @@ const ROLE_CONFIG: Record<UserRole, { label: string; color: string; icon: any }>
 };
 
 export default function AdminUsersScreen() {
-  const { allUsers, suspendUser, activateUser } = useAuth();
+  const { allUsers, suspendUser, activateUser, deleteAccount } = useAuth();
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -40,6 +40,28 @@ export default function AdminUsersScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Activate', onPress: () => activateUser(userId) },
     ]);
+  };
+
+  const handleDelete = (userId: string, userName: string) => {
+    Alert.alert(
+      'Delete Account',
+      `Permanently delete ${userName}'s account? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await deleteAccount(userId);
+            if (success) {
+              Alert.alert('Success', 'Account deleted successfully');
+            } else {
+              Alert.alert('Error', 'Failed to delete account');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -103,7 +125,7 @@ export default function AdminUsersScreen() {
                 </View>
               </View>
               {userItem.role !== 'admin' && (
-                <View>
+                <View style={styles.actionBtnGroup}>
                   {userItem.isSuspended ? (
                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleActivate(userItem.id, userItem.name)}>
                       <CircleCheck size={18} color={Colors.success} />
@@ -113,6 +135,9 @@ export default function AdminUsersScreen() {
                       <CircleX size={18} color={Colors.error} />
                     </TouchableOpacity>
                   )}
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(userItem.id, userItem.name)}>
+                    <Trash2 size={18} color={Colors.error} />
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -161,6 +186,7 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
   roleBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   roleText: { fontSize: 10, fontWeight: '600' as const },
+  actionBtnGroup: { flexDirection: 'row', gap: 4 },
   actionBtn: { padding: 10 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 16, color: Colors.textTertiary },
